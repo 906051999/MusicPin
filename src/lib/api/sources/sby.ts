@@ -1,7 +1,8 @@
 import { MusicAPI } from '../base'
-import type { SearchResponse, SongResponse, SearchResult } from '../types'
+import type { SearchResponse, SongResponse, SearchResult, LyricResponse } from '../types'
 import { getFullUrl } from '../config'
 import { apiRequest } from '@/lib/api/request'
+import type { Platform, APISource } from '../config'
 
 // wy搜索结果类型
 interface WySearchResponse {
@@ -66,31 +67,25 @@ export class SbyAPI implements MusicAPI {
     qq: 'qqdg'  
   } as const
 
-  async search(keyword: string, page = 1, limit = 20): Promise<SearchResponse> {
-    const searchUrls = [
-      getFullUrl(`sby/${this.ENDPOINTS.wy}/?msg=${keyword}&type=json`),
-      getFullUrl(`sby/${this.ENDPOINTS.qq}/?word=${keyword}&type=json`)
-    ]
+  async search(
+    keyword: string, 
+    platform: Platform, 
+    source: APISource, 
+    page = 1, 
+    limit = 20
+  ): Promise<SearchResponse> {
+    // 根据平台选择对应的endpoint
+    const endpoint = this.getEndpointForPlatform(platform)
+    if (!endpoint) {
+      return { code: 404, data: [], msg: `Platform ${platform} not supported` }
+    }
 
-    console.log('[SbyAPI] Search URLs:', searchUrls)
+    const url = getFullUrl(`sby/${endpoint}/?msg=${keyword}&type=json`)
 
     try {
-      const results = await apiRequest.parallelSearch<WySearchResponse | QQSearchResponse>(
-        searchUrls,
-        'SBY'
-      )
+      const res = await apiRequest.searchRequest<WySearchResponse | QQSearchResponse>(url, source)
 
-      console.log('[SbyAPI] Search results:', results)
-
-      const processedResults = results.flatMap((res, index) => {
-        if (index === 0) {
-          // WY 结果
-          return this.mapWySearchResults((res as WySearchResponse).data, keyword)
-        } else {
-          // QQ 结果
-          return this.mapQQSearchResults((res as QQSearchResponse).data, keyword)
-        }
-      })
+      const processedResults = this.mapSearchResults(res, platform, keyword)
 
       return {
         code: 200,
@@ -98,92 +93,160 @@ export class SbyAPI implements MusicAPI {
       }
     } catch (error) {
       console.error('[SbyAPI] Search failed:', error)
-      throw error
+      return { code: 500, data: [], msg: String(error) }
     }
   }
 
-  async getSongDetail(shortRequestUrl: string): Promise<SongResponse> {
-    const isWy = shortRequestUrl.includes(this.ENDPOINTS.wy)
+  async getSongDetail(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<SongResponse> {
     const url = getFullUrl(shortRequestUrl + '&type=json')
     
-    if (isWy) {
-      const res = await apiRequest.detailRequest<WyDetailResponse>(url, 'SBY')
-      return this.mapWyDetail(res, shortRequestUrl)
-    } else {
-      const res = await apiRequest.detailRequest<QQDetailResponse>(url, 'SBY')
-      return this.mapQQDetail(res, shortRequestUrl)
-    }
-  }
-
-  private mapWySearchResults(data: WySearchResponse['data'], keyword: string): SearchResult[] {
-    return data.map(item => ({
-      shortRequestUrl: `sby/${this.ENDPOINTS.wy}/?msg=${encodeURIComponent(keyword)}&n=${item.id}&type=json`,
-      title: item.name,
-      artist: item.singer,
-      cover: item.img,
-      platform: 'wy',
-      source: 'SBY',
-      extra: {
-        cloudID: String(item.id)
-      }
-    }))
-  }
-
-  private mapQQSearchResults(data: QQSearchResponse['data'], keyword: string): SearchResult[] {
-    return data.map(item => ({
-      shortRequestUrl: `sby/${this.ENDPOINTS.qq}/?word=${encodeURIComponent(keyword)}&n=${item.id}&type=json`,
-      title: item.song,
-      artist: item.singer,
-      cover: item.cover,
-      platform: 'qq',
-      source: 'SBY',
-      extra: {
-        cloudID: String(item.id)
-      }
-    }))
-  }
-
-  private mapWyDetail(res: WyDetailResponse, shortRequestUrl: string): SongResponse {
-    return {
-      code: 200,
-      data: {
-        shortRequestUrl,
-        title: res.name,
-        artist: res.author,
-        cover: res.img,
-        platform: 'wy',
-        source: 'SBY',
-        audioUrl: res.mp3,
-        lyrics: this.formatWyLyrics(res.lyric),
-        cloudID: String(res.id),
-        extra: {
-          duration: this.parseDuration(res.market)
-        }
+    try {
+      const res = await apiRequest.detailRequest<WyDetailResponse | QQDetailResponse>(url, source)
+      return this.mapSongDetail(res, shortRequestUrl, platform)
+    } catch (error) {
+      console.error('[SbyAPI] Detail request failed:', error)
+      return { 
+        code: 500, 
+        msg: String(error), 
+        data: null 
       }
     }
   }
 
-  private mapQQDetail(res: QQDetailResponse, shortRequestUrl: string): SongResponse {
-    return {
-      code: 200,
-      data: {
-        shortRequestUrl,
-        title: res.data.song,
-        artist: res.data.singer,
-        cover: res.data.cover,
-        platform: 'qq',
-        source: 'SBY',
-        audioUrl: res.data.url,
-        cloudID: String(res.data.id),
-        extra: {
-          quality: res.data.quality,
-          duration: this.parseDuration(res.data.interval),
-          bitrate: this.parseBitrate(res.data.kbps),
-          size: res.data.size,
-          album: res.data.album,
-          platformUrl: res.data.link
+  async getLyrics(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<LyricResponse> {
+    const url = getFullUrl(shortRequestUrl + '&type=json')
+    
+    try {
+      const res = await apiRequest.detailRequest<WyDetailResponse | QQDetailResponse>(url, source)
+      
+      if ('lyric' in res) {
+        return {
+          code: 200,
+          data: {
+            lyrics: this.formatWyLyrics(res.lyric)
+          }
         }
       }
+      
+      return { 
+        code: 404, 
+        data: { 
+          lyrics: '' 
+        } 
+      }
+    } catch (error) {
+      console.error('[SbyAPI] Lyrics request failed:', error)
+      return { 
+        code: 500, 
+        data: { 
+          lyrics: '' 
+        } 
+      }
+    }
+  }
+
+  // 根据平台获取对应的endpoint
+  private getEndpointForPlatform(platform: Platform): string | undefined {
+    switch (platform) {
+      case 'wy': return this.ENDPOINTS.wy
+      case 'qq': return this.ENDPOINTS.qq
+      default: return undefined
+    }
+  }
+
+  private mapSearchResults(
+    res: WySearchResponse | QQSearchResponse, 
+    platform: Platform, 
+    keyword: string
+  ): SearchResult[] {
+    if ('data' in res) {
+      if (platform === 'wy') {
+        return (res as WySearchResponse).data.map(item => ({
+          shortRequestUrl: `sby/${this.ENDPOINTS.wy}/?msg=${encodeURIComponent(keyword)}&n=${item.id}&type=json`,
+          title: item.name,
+          artist: item.singer,
+          cover: item.img,
+          platform: 'wy',
+          source: 'SBY',
+          extra: {
+            cloudID: String(item.id)
+          }
+        }))
+      } else if (platform === 'qq') {
+        return (res as QQSearchResponse).data.map(item => ({
+          shortRequestUrl: `sby/${this.ENDPOINTS.qq}/?word=${encodeURIComponent(keyword)}&n=${item.id}&type=json`,
+          title: item.song,
+          artist: item.singer,
+          cover: item.cover,
+          platform: 'qq',
+          source: 'SBY',
+          extra: {
+            cloudID: String(item.id)
+          }
+        }))
+      }
+    }
+    return []
+  }
+
+  private mapSongDetail(
+    res: WyDetailResponse | QQDetailResponse, 
+    shortRequestUrl: string, 
+    platform: Platform
+  ): SongResponse {
+    if (platform === 'wy' && 'lyric' in res) {
+      return {
+        code: 200,
+        data: {
+          shortRequestUrl,
+          title: res.name,
+          artist: res.author,
+          cover: res.img,
+          platform: 'wy',
+          source: 'SBY',
+          audioUrl: res.mp3,
+          lyrics: this.formatWyLyrics(res.lyric),
+          cloudID: String(res.id),
+          extra: {
+            duration: this.parseDuration(res.market)
+          }
+        }
+      }
+    } else if (platform === 'qq' && 'data' in res) {
+      return {
+        code: 200,
+        data: {
+          shortRequestUrl,
+          title: res.data.song,
+          artist: res.data.singer,
+          cover: res.data.cover,
+          platform: 'qq',
+          source: 'SBY',
+          audioUrl: res.data.url,
+          cloudID: String(res.data.id),
+          extra: {
+            quality: res.data.quality,
+            duration: this.parseDuration(res.data.interval),
+            bitrate: this.parseBitrate(res.data.kbps),
+            size: res.data.size,
+            album: res.data.album,
+            platformUrl: res.data.link
+          }
+        }
+      }
+    }
+
+    return {
+      code: 500,
+      data: null
     }
   }
 

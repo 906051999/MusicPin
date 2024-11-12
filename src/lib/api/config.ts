@@ -32,6 +32,7 @@ export const API_INTERFACE = {
     wy: '云云',
     qq: '秋秋',
     kg: '狗狗',
+    kg_sq: '狗狗高清',
     kw: '蜗蜗',
     mg: '咕咕',
     bd: '点点',

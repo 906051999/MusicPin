@@ -2,6 +2,7 @@ import { MusicAPI } from '../base'
 import type { SearchResponse, SongResponse, LyricResponse, SearchResult } from '../types'
 import { getFullUrl } from '../config'
 import { apiRequest } from '@/lib/api/request'
+import type { Platform, APISource } from '../config'
 
 interface XFSearchResponse {
   code: number
@@ -45,40 +46,93 @@ export class XfAPI implements MusicAPI {
     wy: 'wangyi'
   } as const
 
-  async search(keyword: string, _page? : 1, limit = 20): Promise<SearchResponse> {
-    const res = await apiRequest.searchRequest<XFSearchResponse>(
-      getFullUrl(`xf/${this.ENDPOINTS.wy}/search?search=${keyword}&limit=${limit}`),
-      'XF'
-    )
+  async search(
+    keyword: string, 
+    platform: Platform, 
+    source: APISource, 
+    _page?: number, 
+    limit = 20
+  ): Promise<SearchResponse> {
+    // 根据平台选择对应的endpoint
+    const endpoint = this.getEndpointForPlatform(platform)
+    if (!endpoint) {
+      return { code: 404, data: [], msg: `Platform ${platform} not supported` }
+    }
 
-    return {
-      code: res.code,
-      msg: res.msg,
-      data: this.mapSearchResults(res.data.songs)
+    const url = getFullUrl(`xf/${endpoint}/search?search=${keyword}&limit=${limit}`)
+
+    try {
+      const res = await apiRequest.searchRequest<XFSearchResponse>(url, source)
+
+      return {
+        code: res.code,
+        msg: res.msg,
+        data: this.mapSearchResults(res.data.songs)
+      }
+    } catch (error) {
+      console.error('[XfAPI] Search error:', error)
+      return { code: 500, data: [], msg: String(error) }
     }
   }
 
-  async getSongDetail(shortRequestUrl: string): Promise<SongResponse> {
-    const res = await apiRequest.detailRequest<XFDetailResponse>(
-      getFullUrl(shortRequestUrl + '&type=json'),
-      'XF'
-    )
+  async getSongDetail(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<SongResponse> {
+    const url = getFullUrl(shortRequestUrl + '&type=json')
 
-    return this.mapSongDetail(res, shortRequestUrl)
+    try {
+      const res = await apiRequest.detailRequest<XFDetailResponse>(url, source)
+      return this.mapSongDetail(res, shortRequestUrl)
+    } catch (error) {
+      console.error('[XfAPI] Detail request error:', error)
+      return { 
+        code: 500, 
+        msg: String(error), 
+        data: null 
+      }
+    }
   }
 
-  async getLyrics(id: string): Promise<LyricResponse> {
-    const res = await apiRequest.detailRequest<XFLyricResponse>(
-      getFullUrl(`xf/${this.ENDPOINTS.wy}/lyrics?id=${id}`),
-      'XF'
-    )
+  async getLyrics(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<LyricResponse> {
+    // 从shortRequestUrl中提取歌曲ID
+    const match = shortRequestUrl.match(/id=(\d+)/)
+    const id = match ? match[1] : ''
 
-    return {
-      code: res.code,
-      msg: res.msg,
-      data: {
-        lyrics: res.data.lyric
+    try {
+      const res = await apiRequest.detailRequest<XFLyricResponse>(
+        getFullUrl(`xf/${this.ENDPOINTS.wy}/lyrics?id=${id}`),
+        source
+      )
+
+      return {
+        code: res.code,
+        msg: res.msg,
+        data: {
+          lyrics: res.data.lyric
+        }
       }
+    } catch (error) {
+      console.error('[XfAPI] Lyrics request error:', error)
+      return { 
+        code: 500, 
+        data: { 
+          lyrics: '' 
+        } 
+      }
+    }
+  }
+
+  // 根据平台获取对应的endpoint
+  private getEndpointForPlatform(platform: Platform): string | undefined {
+    switch (platform) {
+      case 'wy': return this.ENDPOINTS.wy
+      default: return undefined
     }
   }
 

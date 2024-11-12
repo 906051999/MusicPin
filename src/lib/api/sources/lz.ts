@@ -2,6 +2,7 @@ import { MusicAPI } from '../base'
 import type { SearchResponse, SongResponse, LyricResponse, SearchResult } from '../types'
 import { getFullUrl } from '../config'
 import { apiRequest } from '@/lib/api/request'
+import type { Platform, APISource } from '../config'
 
 interface LZSearchResult {
   n: number
@@ -38,54 +39,98 @@ export class LzAPI implements MusicAPI {
     '5s': 'dg_5signmusic.php'
   } as const
 
-  async search(keyword: string, _page?: 1, limit = 20): Promise<SearchResponse> {
-    const searchUrls = [
-      `lz/${this.ENDPOINTS.kg_sq}?${this.getSearchParams('kg_sq', keyword, limit)}&type=json`,
-      `lz/${this.ENDPOINTS.kw}?${this.getSearchParams('kw', keyword, limit)}&type=json`,
-      `lz/${this.ENDPOINTS.wy}?${this.getSearchParams('wy', keyword, limit)}&type=json`,
-      `lz/${this.ENDPOINTS['5s']}?${this.getSearchParams('5s', keyword, limit)}&type=json`
-    ]
+  async search(
+    keyword: string, 
+    platform: Platform, 
+    source: APISource, 
+    _page?: number, 
+    limit = 20
+  ): Promise<SearchResponse> {
+    // 根据平台选择对应的endpoint
+    const endpoint = this.getEndpointForPlatform(platform)
+    if (!endpoint) {
+      return { code: 404, data: [], msg: `Platform ${platform} not supported` }
+    }
 
-    const results = await apiRequest.parallelSearch<{ code: number; data: LZSearchResult[] }>(
-      searchUrls.map(url => getFullUrl(url)),
-      'LZ'
-    )
+    const url = getFullUrl(`lz/${endpoint}?${this.getSearchParams(platform, keyword, limit)}&type=json`)
 
-    return {
-      code: 200,
-      data: results.flatMap((res, index) => 
-        this.mapSearchResults(
-          res.data, 
-          Object.keys(this.ENDPOINTS)[index] as keyof typeof this.ENDPOINTS,
-          keyword
-        )
-      )
+    try {
+      const res = await apiRequest.searchRequest<{ code: number; data: LZSearchResult[] }>(url, source)
+      
+      return {
+        code: 200,
+        data: this.mapSearchResults(res.data, platform, keyword)
+      }
+    } catch (error) {
+      console.error('[LzAPI] Search error:', error)
+      return { code: 500, data: [], msg: String(error) }
     }
   }
 
-  async getSongDetail(shortRequestUrl: string): Promise<SongResponse> {
-    const [platform, params] = this.parseUrl(shortRequestUrl)
-    const url = getFullUrl(`lz/${this.ENDPOINTS[platform]}?${params}&type=json`)
+  async getSongDetail(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<SongResponse> {
+    const [requestPlatform, params] = this.parseUrl(shortRequestUrl)
+    const url = getFullUrl(`lz/${this.ENDPOINTS[requestPlatform]}?${params}&type=json`)
     
-    const res = await apiRequest.detailRequest<LZSongDetail>(url, 'LZ')
-    return this.mapSongDetail(res, shortRequestUrl, platform)
-  }
-
-  async getLyrics(shortRequestUrl: string): Promise<LyricResponse> {
-    const [platform, params] = this.parseUrl(shortRequestUrl)
-    const url = getFullUrl(`lz/${this.ENDPOINTS[platform]}?${params}&type=json`)
-    
-    const res = await apiRequest.detailRequest<LZSongDetail>(url, 'LZ')
-    
-    return {
-      code: res.code,
-      data: {
-        lyrics: res.lyrics || res.lrc || ''
+    try {
+      const res = await apiRequest.detailRequest<LZSongDetail>(url, source)
+      return this.mapSongDetail(res, shortRequestUrl, requestPlatform)
+    } catch (error) {
+      console.error('[LzAPI] Detail request error:', error)
+      return { 
+        code: 500, 
+        msg: String(error), 
+        data: null 
       }
     }
   }
 
-  private mapSearchResults(results: LZSearchResult[], platform: keyof typeof this.ENDPOINTS, keyword: string): SearchResult[] {
+  async getLyrics(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<LyricResponse> {
+    const [requestPlatform, params] = this.parseUrl(shortRequestUrl)
+    const url = getFullUrl(`lz/${this.ENDPOINTS[requestPlatform]}?${params}&type=json`)
+    
+    try {
+      const res = await apiRequest.detailRequest<LZSongDetail>(url, source)
+      
+      return {
+        code: res.code,
+        data: {
+          lyrics: res.lyrics || res.lrc || ''
+        }
+      }
+    } catch (error) {
+      console.error('[LzAPI] Lyrics request error:', error)
+      return { 
+        code: 500, 
+        data: { 
+          lyrics: '' 
+        } 
+      }
+    }
+  }
+
+  // 根据平台获取对应的endpoint
+  private getEndpointForPlatform(platform: Platform): string | undefined {
+    switch (platform) {
+      case 'kg_sq': return this.ENDPOINTS.kg_sq
+      case 'kg': return this.ENDPOINTS.kg
+      case 'kw': return this.ENDPOINTS.kw
+      case 'wy': return this.ENDPOINTS.wy
+      case 'mg': return this.ENDPOINTS.mg
+      case 'bd': return this.ENDPOINTS.bd
+      case '5s': return this.ENDPOINTS['5s']
+      default: return undefined
+    }
+  }
+
+  private mapSearchResults(results: LZSearchResult[], platform: Platform, keyword: string): SearchResult[] {
     if (!results) return []
     
     return results.map(item => ({
@@ -126,7 +171,7 @@ export class LzAPI implements MusicAPI {
     }
   }
 
-  private getSearchParams(platform: string, keyword: string, limit: number): string {
+  private getSearchParams(platform: Platform, keyword: string, limit: number): string {
     switch (platform) {
       case 'kg_sq':
       case '5s':
@@ -143,7 +188,7 @@ export class LzAPI implements MusicAPI {
     }
   }
 
-  private buildDetailParams(platform: string, item: LZSearchResult, keyword: string): string {
+  private buildDetailParams(platform: Platform, item: LZSearchResult, keyword: string): string {
     const baseParams = `msg=${encodeURIComponent(keyword)}&n=${item.n}&type=json`
     switch (platform) {
       case 'kw':

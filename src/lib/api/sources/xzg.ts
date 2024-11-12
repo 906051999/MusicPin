@@ -2,6 +2,7 @@ import { MusicAPI } from '../base'
 import type { SearchResponse, SongResponse, LyricResponse, SearchResult } from '../types'
 import { getFullUrl } from '../config'
 import { apiRequest } from '@/lib/api/request'
+import type { Platform, APISource } from '../config'
 
 interface XZGSearchResult {
   songname: string
@@ -51,47 +52,113 @@ export class XzgAPI implements MusicAPI {
     wy: 'NetEase_CloudMusic_new'
   } as const
 
-  async search(keyword: string, page = 1, limit = 20): Promise<SearchResponse> {
-    const searchUrls = Object.entries(this.ENDPOINTS).map(([, api]) => 
-      getFullUrl(`xzg/${api}/?name=${encodeURIComponent(keyword)}&page=${page}&pagesize=${limit}`)
-    )
+  async search(
+    keyword: string, 
+    platform: Platform, 
+    source: APISource, 
+    page = 1, 
+    limit = 20
+  ): Promise<SearchResponse> {
+    // 根据平台选择对应的endpoint
+    const endpoint = this.getEndpointForPlatform(platform)
+    if (!endpoint) {
+      return { code: 404, data: [], msg: `Platform ${platform} not supported` }
+    }
 
-    const results = await apiRequest.parallelSearch<XZGResponse>(searchUrls, 'XZG')
-    
-    return {
-      code: 200,
-      data: results.flatMap((res, index) => 
-        this.mapSearchResults(
+    const url = getFullUrl(`xzg/${endpoint}/?name=${encodeURIComponent(keyword)}&page=${page}&pagesize=${limit}`)
+
+    try {
+      const res = await apiRequest.searchRequest<XZGResponse>(url, source)
+      
+      return {
+        code: 200,
+        data: this.mapSearchResults(
           res.data as XZGSearchResult[], 
-          Object.keys(this.ENDPOINTS)[index] as keyof typeof this.ENDPOINTS,
+          platform,
           keyword
         )
-      )
+      }
+    } catch (error) {
+      console.error('[XzgAPI] Search error:', error)
+      return { code: 500, data: [], msg: String(error) }
     }
   }
 
-  async getSongDetail(shortRequestUrl: string): Promise<SongResponse> {
-    const res = await apiRequest.detailRequest<XZGResponse>(
-      getFullUrl(shortRequestUrl),
-      'XZG'
-    )
+  async getSongDetail(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<SongResponse> {
+    const url = getFullUrl(shortRequestUrl)
 
-    return this.mapSongDetail(res, shortRequestUrl)
-  }
-
-  async getLyrics(id: string): Promise<LyricResponse> {
-    const res = await apiRequest.detailRequest<XZGLyricResponse>(
-      getFullUrl(`xzg/lyrc/?id=${id}`),
-      'XZG'
-    )
-
-    return {
-      code: res.code,
-      msg: res.msg,
-      data: {
-        lyrics: res.data.encode.context
+    try {
+      const res = await apiRequest.detailRequest<XZGResponse>(url, source)
+      return this.mapSongDetail(res, shortRequestUrl)
+    } catch (error) {
+      console.error('[XzgAPI] Detail request error:', error)
+      return { 
+        code: 500, 
+        msg: String(error), 
+        data: null 
       }
     }
+  }
+
+  async getLyrics(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<LyricResponse> {
+    // 从shortRequestUrl中提取歌曲ID
+    const match = shortRequestUrl.match(/n=([^&]+)/)
+    const id = match ? match[1] : ''
+
+    try {
+      const res = await apiRequest.detailRequest<XZGLyricResponse>(
+        getFullUrl(`xzg/lyrc/?id=${id}`),
+        source
+      )
+
+      return {
+        code: res.code,
+        msg: res.msg,
+        data: {
+          lyrics: res.data.encode.context
+        }
+      }
+    } catch (error) {
+      console.error('[XzgAPI] Lyrics request error:', error)
+      return { 
+        code: 500, 
+        data: { 
+          lyrics: '' 
+        } 
+      }
+    }
+  }
+
+  // 根据平台获取对应的endpoint
+  private getEndpointForPlatform(platform: Platform): string | undefined {
+    switch (platform) {
+      case 'kg': return this.ENDPOINTS.kg
+      case 'kw': return this.ENDPOINTS.kw
+      case 'wy': return this.ENDPOINTS.wy
+      default: return undefined
+    }
+  }
+
+  private mapSearchResults(results: XZGSearchResult[], platform: Platform, keyword: string): SearchResult[] {
+    return results.map(item => ({
+      shortRequestUrl: `xzg/${this.ENDPOINTS[platform]}/?name=${encodeURIComponent(keyword)}&n=${item.id || item.FileHash}`,
+      title: item.songname,
+      artist: item.name,
+      cover: item.cover,
+      platform,
+      source: 'XZG',
+      extra: {
+        songId: item.id || item.FileHash
+      }
+    }))
   }
 
   private mapSongDetail(res: XZGResponse, shortRequestUrl: string): SongResponse {
@@ -121,21 +188,7 @@ export class XzgAPI implements MusicAPI {
     }
   }
 
-  private mapSearchResults(results: XZGSearchResult[], platform: keyof typeof this.ENDPOINTS, keyword: string): SearchResult[] {
-    return results.map(item => ({
-      shortRequestUrl: `xzg/${this.ENDPOINTS[platform]}/?name=${encodeURIComponent(keyword)}&n=${item.id || item.FileHash}`,
-      title: item.songname,
-      artist: item.name,
-      cover: item.cover,
-      platform,
-      source: 'XZG',
-      extra: {
-        songId: item.id || item.FileHash
-      }
-    }))
-  }
-
-  private getPlatformFromUrl(url: string): string {
+  private getPlatformFromUrl(url: string): Platform {
     if (url.includes('Kugou')) return 'kg'
     if (url.includes('Kuwo')) return 'kw'
     return 'wy'

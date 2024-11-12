@@ -2,6 +2,7 @@ import { MusicAPI } from '../base'
 import type { SearchResponse, SongResponse, SearchResult} from '../types'
 import { getFullUrl } from '../config'
 import { apiRequest } from '@/lib/api/request'
+import type { Platform, APISource } from '../config'
 
 interface CGGSearchResult {
   n: number
@@ -53,62 +54,134 @@ export class CggAPI implements MusicAPI {
     xmly: 'music/dg_ximalayamusic.php'
   } as const
 
-  async search(keyword: string, page = 1, limit = 20): Promise<SearchResponse> {
-    const searchUrls = [
-      `cgg/${this.ENDPOINTS.dy}/?msg=${encodeURIComponent(keyword)}&page=${page}&limit=${limit}&type=json`,
-      `cgg/${this.ENDPOINTS.qs}/?msg=${encodeURIComponent(keyword)}&type=json`,
-      `cgg/${this.ENDPOINTS.xmly}?msg=${encodeURIComponent(keyword)}&type=json`
-    ].map(url => getFullUrl(url))
+  async search(
+    keyword: string, 
+    platform: Platform, 
+    source: APISource, 
+    page = 1, 
+    limit = 20
+  ): Promise<SearchResponse> {
+    // 根据平台选择对应的endpoint
+    const endpoint = this.getEndpointForPlatform(platform)
+    if (!endpoint) {
+      return { code: 404, data: [], msg: `Platform ${platform} not supported` }
+    }
 
-    const results = await apiRequest.parallelSearch<{ code: number; data: CGGSearchResult[] }>(
-      searchUrls,
-      'CGG'
-    )
+    const url = getFullUrl(`cgg/${endpoint}/?msg=${encodeURIComponent(keyword)}&type=json&page=${page}&limit=${limit}`)
 
-    return {
-      code: 200,
-      data: results.flatMap((res, index) => 
-        this.mapSearchResults(
-          res.data,
-          Object.keys(this.ENDPOINTS)[index] as keyof typeof this.ENDPOINTS,
-          keyword
-        )
-      )
+    try {
+      const res = await apiRequest.searchRequest<{ code: number; data: CGGSearchResult[] }>(url, source)
+      
+      return {
+        code: 200,
+        data: this.mapSearchResults(res.data, platform, keyword)
+      }
+    } catch (error) {
+      console.error('[CggAPI] Search error:', error)
+      return { code: 500, data: [], msg: String(error) }
     }
   }
 
-  async getSongDetail(shortRequestUrl: string): Promise<SongResponse> {
-    const [platform, params] = this.parseUrl(shortRequestUrl)
-    const url = getFullUrl(`cgg/${this.ENDPOINTS[platform]}/?${params}&type=json`)
+  async getSongDetail(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<SongResponse> {
+    const url = getFullUrl(shortRequestUrl + '&type=json')
 
+    try {
+      switch (platform) {
+        case 'dy': {
+          const res = await apiRequest.detailRequest<CGGDouyinDetail>(url, source)
+          return this.mapDouyinDetail(res, shortRequestUrl)
+        }
+        case 'qs': {
+          const res = await apiRequest.detailRequest<CGGQishuiDetail>(url, source)
+          return this.mapQishuiDetail(res, shortRequestUrl)
+        }
+        case 'xmly': {
+          const res = await apiRequest.detailRequest<CGGXimalayaDetail>(url, source)
+          return this.mapXimalayaDetail(res, shortRequestUrl)
+        }
+        default:
+          throw new Error(`Unsupported platform: ${platform}`)
+      }
+    } catch (error) {
+      console.error('[CggAPI] Detail request error:', error)
+      return { 
+        code: 500, 
+        msg: String(error), 
+        data: null 
+      }
+    }
+  }
+
+  // 可选的歌词获取方法
+  async getLyrics(
+    shortRequestUrl: string, 
+    platform: Platform, 
+    source: APISource
+  ): Promise<{ code: number; data: { lyrics: string } }> {
+    const url = getFullUrl(shortRequestUrl + '&type=json')
+
+    try {
+      switch (platform) {
+        case 'dy': {
+          const res = await apiRequest.detailRequest<CGGDouyinDetail>(url, source)
+          return { 
+            code: 200, 
+            data: { 
+              lyrics: res.data.lrc || '' 
+            } 
+          }
+        }
+        case 'qs': {
+          const res = await apiRequest.detailRequest<CGGQishuiDetail>(url, source)
+          return { 
+            code: 200, 
+            data: { 
+              lyrics: res.lrc || '' 
+            } 
+          }
+        }
+        default:
+          return { 
+            code: 404, 
+            data: { 
+              lyrics: '' 
+            } 
+          }
+      }
+    } catch (error) {
+      console.error('[CggAPI] Lyrics request error:', error)
+      return { 
+        code: 500, 
+        data: { 
+          lyrics: '' 
+        } 
+      }
+    }
+  }
+
+  // 根据平台获取对应的endpoint
+  private getEndpointForPlatform(platform: Platform): string | undefined {
     switch (platform) {
-      case 'dy': {
-        const res = await apiRequest.detailRequest<CGGDouyinDetail>(url, 'CGG')
-        return this.mapDouyinDetail(res, shortRequestUrl)
-      }
-      case 'qs': {
-        const res = await apiRequest.detailRequest<CGGQishuiDetail>(url, 'CGG')
-        return this.mapQishuiDetail(res, shortRequestUrl)
-      }
-      case 'xmly': {
-        const res = await apiRequest.detailRequest<CGGXimalayaDetail>(url, 'CGG')
-        return this.mapXimalayaDetail(res, shortRequestUrl)
-      }
-      default:
-        throw new Error(`Unknown platform: ${platform}`)
+      case 'dy': return this.ENDPOINTS.dy
+      case 'qs': return this.ENDPOINTS.qs
+      case 'xmly': return this.ENDPOINTS.xmly
+      default: return undefined
     }
   }
 
-  private mapSearchResults(results: CGGSearchResult[], platform: keyof typeof this.ENDPOINTS, keyword: string): SearchResult[] {
+  private mapSearchResults(results: CGGSearchResult[], platform: Platform, keyword: string): SearchResult[] {
     if (!results) return []
     
     return results.map(item => ({
-      shortRequestUrl: `cgg/${this.ENDPOINTS[platform]}?${this.buildDetailParams(keyword, item)}`,
+      shortRequestUrl: `cgg/${this.getEndpointForPlatform(platform)}?${this.buildDetailParams(keyword, item)}`,
       title: item.title || '',
       artist: item.singer || item.Nickname || '',
       cover: item.cover || '',
-      platform: platform === 'dy' ? 'dy' : 
-               platform === 'qs' ? 'qs' : 'xmly',
+      platform,
       source: 'CGG',
       extra: platform === 'xmly' ? {
         type: item.type,
@@ -173,21 +246,7 @@ export class CggAPI implements MusicAPI {
     }
   }
 
-  private getSearchParams(platform: string, keyword: string, page = 1, limit = 20): string {
-    switch (platform) {
-      case 'dy':
-        return `msg=${keyword}&page=${page}&limit=${limit}`
-      default:
-        return `msg=${keyword}`
-    }
-  }
-
   private buildDetailParams(keyword: string, item: CGGSearchResult): string {
     return `msg=${encodeURIComponent(keyword)}&n=${item.n}&type=json`
-  }
-
-  private parseUrl(url: string): [keyof typeof this.ENDPOINTS, string] {
-    const [, platform, params] = url.split('/')
-    return [platform as keyof typeof this.ENDPOINTS, params]
   }
 }

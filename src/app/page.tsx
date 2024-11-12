@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Input, Select, Card, Group, Text, Button, Stack, Container } from '@mantine/core'
 import { IconSearch } from '@tabler/icons-react'
 import { useSearch, useSongDetail } from '@/lib/hooks/useMusic'
-import { PLATFORMS } from '@/lib/api/config'
+import { PLATFORMS, API_INTERFACE } from '@/lib/api/config'
 import type { SearchResult } from '@/lib/api/types'
 import { Disclaimer } from '@/components/Disclaimer'
 
@@ -12,19 +12,17 @@ export default function Home() {
   const [keyword, setKeyword] = useState('')
   const [searchText, setSearchText] = useState('')
   const [platform, setPlatform] = useState<string>('wy')
+  const [source, setSource] = useState<string>('XF')
   const [selectedSong, setSelectedSong] = useState<string>('')
+  const [shouldSearch, setShouldSearch] = useState(false)
   
-  const { data: searchData, isLoading: isSearching, error: searchError, refetch } = useSearch(searchText, platform)
-  const { data: songData } = useSongDetail(selectedSong)
-
-  // 过滤当前平台的结果
-  const filteredResults = searchData?.data.filter(item => 
-    item.platform === platform
-  )
+  const { data: searchData, isLoading: isSearching, error: searchError, refetch } = useSearch(searchText, platform, source, shouldSearch)
+  const { data: songData } = useSongDetail(selectedSong, platform, source)
 
   const handleSearch = () => {
     if (keyword.trim()) {
-      setSearchText(keyword.trim())  // 确保设置了搜索文本
+      setSearchText(keyword.trim())
+      setShouldSearch(true)
     }
   }
 
@@ -33,6 +31,19 @@ export default function Home() {
       handleSearch()
     }
   }
+
+  // 重置搜索状态
+  const resetSearch = () => {
+    setShouldSearch(false)
+  }
+
+  // 可用的API源选项
+  const sourceOptions = Object.entries(API_INTERFACE)
+    .filter(([key]) => key.startsWith(`${platform}:`))
+    .map(([key, label]) => ({
+      value: key.split(':')[1].toUpperCase(),
+      label
+    }))
 
   return (
     <Container size="md" py="xl">
@@ -46,18 +57,40 @@ export default function Home() {
         <Input
           placeholder="输入关键词搜索..."
           value={keyword}
-          onChange={(e) => setKeyword(e.currentTarget.value)}
+          onChange={(e) => {
+            setKeyword(e.currentTarget.value)
+            resetSearch() // 输入变化时重置搜索状态
+          }}
           onKeyPress={handleKeyPress}
           className="flex-1"
           size="md"
         />
         <Select
           value={platform}
-          onChange={(value) => setPlatform(value || 'wy')}
+          onChange={(value) => {
+            setPlatform(value || 'wy')
+            resetSearch() // 平台变化时重置搜索状态
+            // 重置source为该平台的第一个可用源
+            const newSources = Object.entries(API_INTERFACE)
+              .filter(([key]) => key.startsWith(`${value}:`))
+            if (newSources.length > 0) {
+              setSource(newSources[0][0].split(':')[1].toUpperCase())
+            }
+          }}
           data={Object.entries(PLATFORMS).map(([value, label]) => ({
             value,
             label
           }))}
+          w={120}
+          size="md"
+        />
+        <Select
+          value={source}
+          onChange={(value) => {
+            setSource(value || 'XF')
+            resetSearch() // source变化时重置搜索状态
+          }}
+          data={sourceOptions}
           w={120}
           size="md"
         />
@@ -87,13 +120,13 @@ export default function Home() {
             </Button>
           </Group>
         </Card>
-      ) : searchText && filteredResults?.length === 0 ? (
+      ) : searchText && searchData?.data?.length === 0 ? (
         <Text ta="center" c="dimmed">未找到相关结果</Text>
       ) : null}
 
       {/* 搜索结果列表 */}
       <Stack gap="md">
-        {filteredResults?.map((result) => (
+        {searchData?.data?.map((result) => (
           <SearchResultCard
             key={result.shortRequestUrl}
             result={result}
