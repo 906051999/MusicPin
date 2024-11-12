@@ -193,56 +193,80 @@ export class CggAPI implements MusicAPI {
   }
 
   private mapDouyinDetail(res: CGGDouyinDetail, shortRequestUrl: string): SongResponse {
+    if (!res.data?.url) {
+      return {
+        code: 404,
+        msg: 'No audio URL found',
+        data: null
+      }
+    }
+
     return {
       code: res.code,
       msg: res.msg,
       data: {
         shortRequestUrl,
-        title: res.data.title,
-        artist: res.data.singer,
-        cover: res.data.cover,
+        title: res.data.title || '未知歌曲',
+        artist: res.data.singer || '未知歌手',
+        cover: res.data.cover || '',
         platform: 'dy',
         source: 'CGG',
         audioUrl: res.data.url,
-        lyrics: res.data.lrc
+        lyrics: res.data.lrc || '',
       }
     }
   }
 
   private mapQishuiDetail(res: CGGQishuiDetail, shortRequestUrl: string): SongResponse {
+    if (!res.music) {
+      return {
+        code: 404,
+        msg: 'No audio URL found',
+        data: null
+      }
+    }
+
     return {
       code: 200,
       msg: res.msg,
       data: {
         shortRequestUrl,
-        title: res.title,
-        artist: res.singer,
-        cover: res.cover,
+        title: res.title || '未知歌曲',
+        artist: res.singer || '未知歌手',
+        cover: res.cover || '',
         platform: 'qs',
         source: 'CGG',
         audioUrl: res.music,
-        lyrics: res.lrc,
+        lyrics: res.lrc || '',
         extra: {
-          platformUrl: res.link
+          platformUrl: res.link || ''
         }
       }
     }
   }
 
   private mapXimalayaDetail(res: CGGXimalayaDetail, shortRequestUrl: string): SongResponse {
+    if (!res.url) {
+      return {
+        code: 404,
+        msg: 'No audio URL found',
+        data: null
+      }
+    }
+
     return {
       code: res.code,
       msg: res.msg,
       data: {
         shortRequestUrl,
-        title: res.title,
-        artist: res.nickname,
-        cover: res.cover,
+        title: res.title || '未知歌曲',
+        artist: res.nickname || '未知作者',
+        cover: res.cover || '',
         platform: 'xmly',
         source: 'CGG',
         audioUrl: res.url,
         extra: {
-          platformUrl: res.link
+          platformUrl: res.link || ''
         }
       }
     }

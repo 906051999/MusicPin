@@ -35,7 +35,7 @@ export const API_INTERFACE = {
     wy: '云云',
     qq: '秋秋',
     kg: '狗狗',
-    kg_sq: '狗狗高清',
+    kg_sq: '狗狗高品',
     kw: '蜗蜗',
     mg: '咕咕',
     bd: '点点',
@@ -74,3 +74,30 @@ export const API_SUCCESS_CODES = {
 export function isSuccessCode(source: APISource, code: number): boolean {
   return API_SUCCESS_CODES[source].includes(code);
 }
+
+// 添加接口状态配置
+export const API_STATUS = {
+  'wy:sby': true,
+  'qq:sby': false, // 11.13 搜索返回400
+  'wy:xf': true,
+  'kg:lz': true,
+  'kw:lz': false, // 11.13 搜索cors问题 
+  'wy:lz': true,
+  'kg_sq:lz': true,
+  'wy:xzg': true,
+  'kg:xzg': true, 
+  'kw:xzg': false, // 11.13 搜索起始页码为0，结果对应不上
+  'dy:cgg': false, // 11.13 搜索返回正常，播放cors问题
+  'qs:cgg': false, // 11.13 搜索cors问题
+  'xmly:cgg': false, //有声、电台
+  'bd:lz': false, // 11.13 搜索cors问题
+  'mg:lz': true,
+  '5s:lz': false, // 原创、伴奏、翻唱
+} as const;
+
+// 工具函数：检查接口是否可用
+export function isInterfaceEnabled(platform: string, source: string): boolean {
+  const key = `${platform}:${source.toLowerCase()}` as keyof typeof API_STATUS;
+  return API_STATUS[key] ?? false;
+}
+

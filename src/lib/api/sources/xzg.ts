@@ -167,6 +167,14 @@ export class XzgAPI implements MusicAPI {
     const detail = res.data as XZGSongDetail
     const platform = this.getPlatformFromUrl(shortRequestUrl)
 
+    if (!detail.src) {
+      return {
+        code: 404,
+        msg: 'No audio URL found',
+        data: null
+      }
+    }
+
     return {
       code: res.code,
       msg: res.msg,
@@ -177,11 +185,11 @@ export class XzgAPI implements MusicAPI {
         cover: detail.cover || '',
         platform,
         source: 'XZG',
-        audioUrl: detail.src || '',
+        audioUrl: detail.src,
         extra: {
           quality: detail.quality || '',
-          duration: this.parseDuration(detail.interval),
-          bitrate: parseInt(detail.kbps) || 0,
+          duration: detail.interval ? this.parseDuration(detail.interval) : undefined,
+          bitrate: detail.kbps ? parseInt(detail.kbps) : undefined,
           size: detail.size || '',
           album: detail.album || '',
           platformUrl: detail.songurl || ''

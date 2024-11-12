@@ -4,16 +4,32 @@ import { useState, useEffect } from 'react'
 import { Input, Select, Card, Group, Text, Button, Stack, Container, Badge } from '@mantine/core'
 import { IconSearch, IconX } from '@tabler/icons-react'
 import { useSearch, useSongDetail } from '@/lib/hooks/useMusic'
-import { PLATFORMS, API_INTERFACE, isSuccessCode } from '@/lib/api/config'
+import { PLATFORMS, API_INTERFACE, isSuccessCode, isInterfaceEnabled } from '@/lib/api/config'
 import type { SearchResult } from '@/lib/api/types'
 import { Disclaimer } from '@/components/Disclaimer'
 import { notifications } from '@mantine/notifications'
+
+// 获取有效平台列表的函数
+const getAvailablePlatforms = () => {
+  return Object.entries(PLATFORMS)
+    .filter(([platformKey]) => 
+      // 检查该平台是否有至少一个可用接口
+      Object.keys(API_INTERFACE).some(key => {
+        const [plt, src] = key.split(':');
+        return plt === platformKey && isInterfaceEnabled(plt, src);
+      })
+    )
+    .map(([value, label]) => ({
+      value,
+      label
+    }));
+};
 
 export default function Home() {
   const [keyword, setKeyword] = useState('')
   const [searchText, setSearchText] = useState('')
   const [platform, setPlatform] = useState<string>('wy')
-  const [source, setSource] = useState<string>('XF')
+  const [source, setSource] = useState<string>(() => getInitialSource('wy'))
   const [selectedSong, setSelectedSong] = useState<string>('')
   const [shouldSearch, setShouldSearch] = useState(false)
   
@@ -81,12 +97,18 @@ export default function Home() {
   }
 
   // 修改 sourceOptions 的获取方式
-  const sourceOptions = Object.entries(API_INTERFACE)
-    .filter(([key]) => key.startsWith(`${platform}:`))
-    .map(([key, label]) => ({
-      value: key.split(':')[1].toUpperCase(),
-      label
-    }))
+  const sourceOptions = Array.from(new Set(
+    Object.entries(API_INTERFACE)
+      .filter(([key]) => {
+        const [plt, src] = key.split(':');
+        return plt === platform && isInterfaceEnabled(plt, src);
+      })
+      .map(([key]) => key.split(':')[1].toUpperCase())
+  ))
+  .map(source => ({
+    value: source,
+    label: `${PLATFORMS[platform as keyof typeof PLATFORMS]}(${source})`
+  }));
 
   const handlePlay = (result: SearchResult) => {
     if (selectedSong === result.shortRequestUrl) {
@@ -121,6 +143,7 @@ export default function Home() {
           onChange={(value) => {
             setPlatform(value || 'wy')
             resetSearch() // 平台变化时重置搜索状态
+            setSelectedSong('') // 清除正在播放的歌曲
             // 重置source为该平台的第一个可用源
             const newSources = Object.entries(API_INTERFACE)
               .filter(([key]) => key.startsWith(`${value}:`))
@@ -128,10 +151,7 @@ export default function Home() {
               setSource(newSources[0][0].split(':')[1].toUpperCase())
             }
           }}
-          data={Object.entries(PLATFORMS).map(([value, label]) => ({
-            value,
-            label
-          }))}
+          data={getAvailablePlatforms()}
           w={120}
           size="md"
         />
@@ -140,6 +160,7 @@ export default function Home() {
           onChange={(value) => {
             setSource(value || 'XF')
             resetSearch() // source变化时重置搜索状态
+            setSelectedSong('') // 清除正在播放的歌曲
           }}
           data={sourceOptions}
           w={120}
@@ -273,3 +294,14 @@ function SearchResultCard({
     </Card>
   )
 }
+
+const getInitialSource = (initialPlatform: string) => {
+  const availableSources = Object.entries(API_INTERFACE)
+    .filter(([key]) => {
+      const [plt, src] = key.split(':');
+      return plt === initialPlatform && isInterfaceEnabled(plt, src);
+    })
+    .map(([key]) => key.split(':')[1].toUpperCase());
+  
+  return availableSources[0] || 'XF';
+};

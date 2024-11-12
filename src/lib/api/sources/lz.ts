@@ -10,6 +10,9 @@ interface LZSearchResult {
   singer: string
   songid?: string
   song_rid?: string
+  ID?: number
+  songtype?: string
+  originSinger?: string
 }
 
 interface LZSongDetail {
@@ -46,7 +49,6 @@ export class LzAPI implements MusicAPI {
     _page?: number, 
     limit = 20
   ): Promise<SearchResponse> {
-    // 根据平台选择对应的endpoint
     const endpoint = this.getEndpointForPlatform(platform)
     if (!endpoint) {
       return { code: 404, data: [], msg: `Platform ${platform} not supported` }
@@ -55,11 +57,13 @@ export class LzAPI implements MusicAPI {
     const url = getFullUrl(`lz/${endpoint}?${this.getSearchParams(platform, keyword, limit)}&type=json`)
 
     try {
-      const res = await apiRequest.searchRequest<{ code: number; data: LZSearchResult[] }>(url, source)
+      const res = await apiRequest.searchRequest<LZSearchResult[] | { code: number; data: LZSearchResult[] }>(url, source)
+      
+      const searchResults = Array.isArray(res) ? res : res.data
       
       return {
         code: 200,
-        data: this.mapSearchResults(res.data, platform, keyword)
+        data: this.mapSearchResults(searchResults, platform, keyword)
       }
     } catch (error) {
       console.error('[LzAPI] Search error:', error)
@@ -73,9 +77,8 @@ export class LzAPI implements MusicAPI {
     source: APISource
   ): Promise<SongResponse> {
     try {
-      // 直接使用完整的 shortRequestUrl
       const url = getFullUrl(shortRequestUrl)
-      console.log('[LzAPI] Detail request URL:', url) // 添加日志
+      console.log('[LzAPI] Detail request URL:', url)
 
       const res = await apiRequest.detailRequest<LZSongDetail>(url, source)
       return this.mapSongDetail(res, shortRequestUrl, platform)
@@ -117,7 +120,6 @@ export class LzAPI implements MusicAPI {
     }
   }
 
-  // 根据平台获取对应的endpoint
   private getEndpointForPlatform(platform: Platform): string | undefined {
     switch (platform) {
       case 'kg_sq': return this.ENDPOINTS.kg_sq
@@ -132,16 +134,18 @@ export class LzAPI implements MusicAPI {
   }
 
   private mapSearchResults(results: LZSearchResult[], platform: Platform, keyword: string): SearchResult[] {
-    if (!results) return []
+    if (!results?.length) return []
+    
+    console.log('[LzAPI] Mapping search results:', { results, platform })
     
     return results.map(item => ({
       shortRequestUrl: `lz/${this.ENDPOINTS[platform]}?${this.buildDetailParams(platform, item, keyword)}`,
-      title: item.title || '',
-      artist: item.singer || '',
+      title: String(item.title || ''),
+      artist: String(item.singer || ''),
       platform: platform === 'kg_sq' ? 'kg' : platform,
       source: 'LZ',
       extra: {
-        songId: item.songid || item.song_rid
+        songId: platform === '5s' ? item.ID : (item.songid || item.song_rid)
       }
     }))
   }
@@ -154,16 +158,25 @@ export class LzAPI implements MusicAPI {
       }
     }
 
+    const audioUrl = res.music_url || res.flac_url || res.url || ''
+    if (!audioUrl) {
+      return {
+        code: 404,
+        msg: 'No audio URL found',
+        data: null
+      }
+    }
+
     return {
       code: res.code,
       data: {
         shortRequestUrl,
-        title: res.title || res.song_name || '',
-        artist: res.singer || res.song_singer || '',
+        title: res.title || res.song_name || '未知歌曲',
+        artist: res.singer || res.song_singer || '未知歌手',
         cover: res.cover || res.song_cover || '',
         platform: platform === 'kg_sq' ? 'kg' : platform,
         source: 'LZ',
-        audioUrl: res.music_url || res.flac_url || res.url || '',
+        audioUrl,
         lyrics: res.lyrics || res.lrc || '',
         extra: {
           platformUrl: res.link || ''
@@ -192,9 +205,10 @@ export class LzAPI implements MusicAPI {
 
   private buildDetailParams(platform: Platform, item: LZSearchResult, keyword: string): string {
     const encodedKeyword = encodeURIComponent(keyword)
+    const n = platform === '5s' ? item.ID : item.n
     const baseParams = platform === 'kg' || platform === 'wy' || platform === 'mg' || platform === 'bd'
-      ? `gm=${encodedKeyword}&n=${item.n}&type=json`
-      : `msg=${encodedKeyword}&n=${item.n}&type=json`
+      ? `gm=${encodedKeyword}&n=${n}&type=json`
+      : `msg=${encodedKeyword}&n=${n}&type=json`
 
     switch (platform) {
       case 'kg_sq':
@@ -205,10 +219,8 @@ export class LzAPI implements MusicAPI {
   }
 
   private parseUrl(url: string): [keyof typeof this.ENDPOINTS, string] {
-    // 示例 URL: lz/dg_kugouSQ.php?msg=关键词&n=1&type=json
     const [, endpoint, queryString] = url.split('/')
     
-    // 从 endpoint 中提取平台标识
     const platform = Object.entries(this.ENDPOINTS).find(([_, value]) => value === endpoint)?.[0]
     if (!platform) {
       throw new Error(`Invalid platform endpoint: ${endpoint}`)

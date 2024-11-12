@@ -150,21 +150,29 @@ export class XfAPI implements MusicAPI {
   }
 
   private mapSongDetail(res: XFDetailResponse, shortRequestUrl: string): SongResponse {
+    if (!res.data?.url) {
+      return {
+        code: 404,
+        msg: 'No audio URL found',
+        data: null
+      }
+    }
+
     return {
       code: res.code,
       msg: res.msg,
       data: {
         shortRequestUrl,
-        title: res.data.name,
-        artist: res.data.artistsname,
-        cover: res.data.picurl,
+        title: res.data.name || '未知歌曲',
+        artist: res.data.artistsname || '未知歌手',
+        cover: res.data.picurl || '',
         platform: 'wy',
         source: 'XF',
         audioUrl: res.data.url,
         cloudID: res.data.id,
         extra: {
           duration: res.data.duration,
-          album: res.data.album
+          album: res.data.album || ''
         }
       }
     }

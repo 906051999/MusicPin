@@ -207,16 +207,16 @@ export class SbyAPI implements MusicAPI {
         code: 200,
         data: {
           shortRequestUrl,
-          title: res.name,
-          artist: res.author,
-          cover: res.img,
+          title: res.name || '未知歌曲',
+          artist: res.author || '未知歌手',
+          cover: res.img || '',
           platform: 'wy',
           source: 'SBY',
-          audioUrl: res.mp3,
-          lyrics: this.formatWyLyrics(res.lyric),
+          audioUrl: res.mp3 || '',
+          lyrics: Array.isArray(res.lyric) ? this.formatWyLyrics(res.lyric) : '',
           cloudID: String(res.id),
           extra: {
-            duration: this.parseDuration(res.market)
+            duration: res.market ? this.parseDuration(res.market) : undefined
           }
         }
       }

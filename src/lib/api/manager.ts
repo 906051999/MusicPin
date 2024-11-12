@@ -22,7 +22,7 @@ export class APIManager {
     platform: Platform, 
     source: APISource, 
     page = 1, 
-    limit = 20
+    limit = 10
   ): Promise<SearchResponse> {
     if (!keyword || !platform || !source) {
       return { code: 200, data: [] }
