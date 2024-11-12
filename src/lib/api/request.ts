@@ -14,12 +14,24 @@ export class APIRequest {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
+      },
+      maxRedirects: 5,
+      validateStatus: (status) => {
+        return status >= 200 && status < 400
       }
     })
 
     // 响应拦截器
     this.client.interceptors.response.use(
-      response => response.data,
+      response => {
+        if (response.status === 301 || response.status === 302) {
+          const redirectUrl = response.headers.location
+          if (redirectUrl) {
+            return this.client.get(redirectUrl)
+          }
+        }
+        return response.data
+      },
       error => {
         throw new APIError(
           error.response?.data?.msg || error.message,

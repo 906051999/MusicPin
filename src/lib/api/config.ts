@@ -10,7 +10,7 @@ export const API_BASE_URLS = {
   // API源类型
   export type APISource = keyof typeof API_BASE_URLS;
 
- // 增加API接口类型
+// 增加API接口类型
 export const API_INTERFACE = {
   'wy:sby': '云云(SBY)',
   'qq:sby': '秋秋(SBY)',
@@ -24,7 +24,10 @@ export const API_INTERFACE = {
   'kw:xzg': '蜗蜗(XZG)',
   'dy:cgg': '豆豆(CGG)',
   'qs:cgg': '七七(CGG)',
-  'xmly:cgg': '西西(CGG)'
+  'xmly:cgg': '西西(CGG)',
+  'bd:lz': '点点(LZ)', 
+  'mg:lz': '咕咕(LZ)', 
+  '5s:lz': '五五(LZ)', 
 } as const;
   
   // 平台标识
@@ -57,3 +60,17 @@ export const API_INTERFACE = {
   export function getPlatformName(platform: Platform): string {
     return PLATFORMS[platform];
   } 
+
+  // 添加 API 成功状态码配置
+export const API_SUCCESS_CODES = {
+  CGG: [200],
+  LZ: [200],
+  SBY: [200],
+  XF: [200],
+  XZG: [0, 200]
+} as const;
+
+// 工具函数：检查是否为成功状态码
+export function isSuccessCode(source: APISource, code: number): boolean {
+  return API_SUCCESS_CODES[source].includes(code);
+}

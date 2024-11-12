@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { Input, Select, Card, Group, Text, Button, Stack, Container } from '@mantine/core'
-import { IconSearch } from '@tabler/icons-react'
+import { useState, useEffect } from 'react'
+import { Input, Select, Card, Group, Text, Button, Stack, Container, Badge } from '@mantine/core'
+import { IconSearch, IconX } from '@tabler/icons-react'
 import { useSearch, useSongDetail } from '@/lib/hooks/useMusic'
-import { PLATFORMS, API_INTERFACE } from '@/lib/api/config'
+import { PLATFORMS, API_INTERFACE, isSuccessCode } from '@/lib/api/config'
 import type { SearchResult } from '@/lib/api/types'
 import { Disclaimer } from '@/components/Disclaimer'
+import { notifications } from '@mantine/notifications'
 
 export default function Home() {
   const [keyword, setKeyword] = useState('')
@@ -17,12 +18,54 @@ export default function Home() {
   const [shouldSearch, setShouldSearch] = useState(false)
   
   const { data: searchData, isLoading: isSearching, error: searchError, refetch } = useSearch(searchText, platform, source, shouldSearch)
-  const { data: songData } = useSongDetail(selectedSong, platform, source)
+  const { data: songData, error: songDetailError } = useSongDetail(selectedSong, platform, source)
+
+  // 监听歌曲详情错误
+  useEffect(() => {
+    if (songDetailError) {
+      console.error('Complete song detail error:', songDetailError)
+      notifications.show({
+        title: '播放失败',
+        message: songDetailError.message || '无法获取歌曲详情',
+        color: 'red',
+        icon: <IconX />,
+        autoClose: 3000, // 延长通知时间
+        onClose: () => {
+          setSelectedSong('')
+        }
+      })
+    } else if (songData && !isSuccessCode(songData.data?.source as APISource, songData.code)) {
+      console.error('Detailed song data error:', songData)
+      notifications.show({
+        title: '播放失败',
+        message: songData.msg || '歌曲详情获取异常',
+        color: 'red',
+        icon: <IconX />,
+        autoClose: 3000, // 延长通知时间
+        onClose: () => {
+          setSelectedSong('')
+        }
+      })
+    }
+  }, [songDetailError, songData])
+
+  // 修改 useEffect 来处理平台和源的关联
+  useEffect(() => {
+    const availableSources = Object.entries(API_INTERFACE)
+      .filter(([key]) => key.startsWith(`${platform}:`))
+      .map(([key]) => key.split(':')[1].toUpperCase())
+    
+    if (!availableSources.includes(source)) {
+      // 如果当前源不可用，自动切换到第一个可用源
+      setSource(availableSources[0] || 'XF')
+    }
+  }, [platform, source])
 
   const handleSearch = () => {
     if (keyword.trim()) {
       setSearchText(keyword.trim())
-      setShouldSearch(true)
+      setShouldSearch(false)
+      setTimeout(() => setShouldSearch(true), 0)
     }
   }
 
@@ -37,13 +80,21 @@ export default function Home() {
     setShouldSearch(false)
   }
 
-  // 可用的API源选项
+  // 修改 sourceOptions 的获取方式
   const sourceOptions = Object.entries(API_INTERFACE)
     .filter(([key]) => key.startsWith(`${platform}:`))
     .map(([key, label]) => ({
       value: key.split(':')[1].toUpperCase(),
       label
     }))
+
+  const handlePlay = (result: SearchResult) => {
+    if (selectedSong === result.shortRequestUrl) {
+      setSelectedSong('')  // 如果当前歌曲正在播放，点击则停止
+    } else {
+      setSelectedSong(result.shortRequestUrl)  // 否则播放新选中的歌曲
+    }
+  }
 
   return (
     <Container size="md" py="xl">
@@ -124,46 +175,66 @@ export default function Home() {
         <Text ta="center" c="dimmed">未找到相关结果</Text>
       ) : null}
 
-      {/* 搜索结果列表 */}
+      {/* 修改搜索结果列表的渲染 */}
       <Stack gap="md">
-        {searchData?.data?.map((result) => (
-          <SearchResultCard
-            key={result.shortRequestUrl}
-            result={result}
-            isPlaying={selectedSong === result.shortRequestUrl}
-            onPlay={() => {
-              if (selectedSong === result.shortRequestUrl) {
-                setSelectedSong('')  // 如果当前歌曲正在播放，点击则停止
-              } else {
-                setSelectedSong(result.shortRequestUrl)  // 否则播放新选中的歌曲
-              }
-            }}
-          />
-        ))}
+        {searchData?.data?.map((result) => {
+          const isPlaying = selectedSong === result.shortRequestUrl
+          return isPlaying && songData?.data ? (
+            <Card key={result.shortRequestUrl} withBorder shadow="sm">
+              <Group align="flex-start" noWrap>
+                <Badge 
+                  size="sm" 
+                  variant="light"
+                  style={{ minWidth: '40px', textAlign: 'center' }}
+                >
+                  {PLATFORMS[result.platform as keyof typeof PLATFORMS]}
+                </Badge>
+                <div style={{ flex: 1 }}>
+                  <Text fw={500} lineClamp={1}>{songData.data.title || result.title}</Text>
+                  <Text size="sm" c="dimmed" lineClamp={1}>
+                    {songData.data.artist || result.artist}
+                  </Text>
+                  <Text size="xs" c="gray">
+                    {songData.data.extra?.quality && `音质: ${songData.data.extra.quality}`}
+                  </Text>
+                  <audio
+                    src={songData.data.audioUrl}
+                    controls
+                    autoPlay
+                    className="w-full mt-2"
+                    onEnded={() => setSelectedSong('')}
+                    onError={() => {
+                      setSelectedSong('')
+                      notifications.show({
+                        title: '播放失败',
+                        message: '音频加载错误',
+                        color: 'red',
+                        icon: <IconX />
+                      })
+                    }}
+                  />
+                </div>
+                <Button
+                  variant="filled"
+                  onClick={() => handlePlay(result)}
+                  size="sm"
+                >
+                  停止播放
+                </Button>
+              </Group>
+            </Card>
+          ) : (
+            <SearchResultCard
+              key={result.shortRequestUrl}
+              result={result}
+              isPlaying={isPlaying}
+              onPlay={() => handlePlay(result)}
+            />
+          )
+        })}
       </Stack>
 
-      {/* 播放器 */}
-      {songData && (
-        <Card 
-          withBorder 
-          className="fixed bottom-0 left-0 right-0 rounded-none"
-          p="md"
-        >
-          <Group justify="space-between" mb="xs">
-            <div>
-              <Text fw={500}>{songData.data.title}</Text>
-              <Text size="sm" c="dimmed">{songData.data.artist}</Text>
-            </div>
-          </Group>
-          <audio
-            src={songData.data.audioUrl}
-            controls
-            autoPlay
-            className="w-full"
-            onEnded={() => setSelectedSong('')}  // 播放结束时清除选中状态
-          />
-        </Card>
-      )}
+      {/* 移除底部固定播放器 */}
     </Container>
   )
 }
@@ -179,12 +250,17 @@ function SearchResultCard({
 }) {
   return (
     <Card withBorder shadow="sm">
-      <Group justify="space-between" align="center">
-        <div>
+      <Group align="flex-start" noWrap>
+        <Badge 
+          size="sm" 
+          variant="light"
+          style={{ minWidth: '40px', textAlign: 'center' }}
+        >
+          {PLATFORMS[result.platform as keyof typeof PLATFORMS]}
+        </Badge>
+        <div style={{ flex: 1 }}>
           <Text fw={500} lineClamp={1}>{result.title}</Text>
-          <Text size="sm" c="dimmed" lineClamp={1}>
-            {result.artist} · {PLATFORMS[result.platform as keyof typeof PLATFORMS]}
-          </Text>
+          <Text size="sm" c="dimmed" lineClamp={1}>{result.artist}</Text>
         </div>
         <Button
           variant={isPlaying ? "filled" : "light"}

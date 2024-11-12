@@ -35,7 +35,7 @@ export class LzAPI implements MusicAPI {
     kw: 'dg_kuwomusic.php', 
     wy: 'dg_wyymusic.php',
     mg: 'dg_mgmusic.php',
-    bd: 'dg_bdmusic.php',
+    bd: 'dg_BDbdmusic.php',
     '5s': 'dg_5signmusic.php'
   } as const
 
@@ -72,12 +72,13 @@ export class LzAPI implements MusicAPI {
     platform: Platform, 
     source: APISource
   ): Promise<SongResponse> {
-    const [requestPlatform, params] = this.parseUrl(shortRequestUrl)
-    const url = getFullUrl(`lz/${this.ENDPOINTS[requestPlatform]}?${params}&type=json`)
-    
     try {
+      // 直接使用完整的 shortRequestUrl
+      const url = getFullUrl(shortRequestUrl)
+      console.log('[LzAPI] Detail request URL:', url) // 添加日志
+
       const res = await apiRequest.detailRequest<LZSongDetail>(url, source)
-      return this.mapSongDetail(res, shortRequestUrl, requestPlatform)
+      return this.mapSongDetail(res, shortRequestUrl, platform)
     } catch (error) {
       console.error('[LzAPI] Detail request error:', error)
       return { 
@@ -172,27 +173,30 @@ export class LzAPI implements MusicAPI {
   }
 
   private getSearchParams(platform: Platform, keyword: string, limit: number): string {
+    const encodedKeyword = encodeURIComponent(keyword)
+    
     switch (platform) {
       case 'kg_sq':
+      case 'kw':
       case '5s':
-        return `msg=${keyword}&num=${limit}`
+        return `msg=${encodedKeyword}&num=${limit}&type=json`
       case 'kg':
       case 'wy':
       case 'mg':
       case 'bd':
-        return `gm=${keyword}&num=${limit}`
-      case 'kw':
-        return `msg=${keyword}&num=${limit}`
+        return `gm=${encodedKeyword}&num=${limit}&type=json`
       default:
-        return `msg=${keyword}&num=${limit}`
+        return `msg=${encodedKeyword}&num=${limit}&type=json`
     }
   }
 
   private buildDetailParams(platform: Platform, item: LZSearchResult, keyword: string): string {
-    const baseParams = `msg=${encodeURIComponent(keyword)}&n=${item.n}&type=json`
+    const encodedKeyword = encodeURIComponent(keyword)
+    const baseParams = platform === 'kg' || platform === 'wy' || platform === 'mg' || platform === 'bd'
+      ? `gm=${encodedKeyword}&n=${item.n}&type=json`
+      : `msg=${encodedKeyword}&n=${item.n}&type=json`
+
     switch (platform) {
-      case 'kw':
-        return baseParams
       case 'kg_sq':
         return `${baseParams}&quality=flac`
       default:
@@ -201,8 +205,15 @@ export class LzAPI implements MusicAPI {
   }
 
   private parseUrl(url: string): [keyof typeof this.ENDPOINTS, string] {
-    const [, platform, ...rest] = url.split('/')
-    const params = rest.join('/').replace('?', '')
-    return [platform as keyof typeof this.ENDPOINTS, params]
+    // 示例 URL: lz/dg_kugouSQ.php?msg=关键词&n=1&type=json
+    const [, endpoint, queryString] = url.split('/')
+    
+    // 从 endpoint 中提取平台标识
+    const platform = Object.entries(this.ENDPOINTS).find(([_, value]) => value === endpoint)?.[0]
+    if (!platform) {
+      throw new Error(`Invalid platform endpoint: ${endpoint}`)
+    }
+
+    return [platform, queryString]
   }
 }

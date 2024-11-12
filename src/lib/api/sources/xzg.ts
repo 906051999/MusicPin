@@ -89,7 +89,9 @@ export class XzgAPI implements MusicAPI {
     platform: Platform, 
     source: APISource
   ): Promise<SongResponse> {
-    const url = getFullUrl(shortRequestUrl)
+    // 移除多余的 &type=json
+    const cleanUrl = shortRequestUrl.replace('&type=json', '')
+    const url = getFullUrl(cleanUrl)
 
     try {
       const res = await apiRequest.detailRequest<XZGResponse>(url, source)
@@ -148,8 +150,8 @@ export class XzgAPI implements MusicAPI {
   }
 
   private mapSearchResults(results: XZGSearchResult[], platform: Platform, keyword: string): SearchResult[] {
-    return results.map(item => ({
-      shortRequestUrl: `xzg/${this.ENDPOINTS[platform]}/?name=${encodeURIComponent(keyword)}&n=${item.id || item.FileHash}`,
+    return results.map((item, index) => ({
+      shortRequestUrl: `xzg/${this.ENDPOINTS[platform]}/?name=${encodeURIComponent(keyword)}&n=${index + 1}`,
       title: item.songname,
       artist: item.name,
       cover: item.cover,
@@ -170,19 +172,19 @@ export class XzgAPI implements MusicAPI {
       msg: res.msg,
       data: {
         shortRequestUrl,
-        title: detail.songname,
-        artist: detail.name,
-        cover: detail.cover,
+        title: detail.songname || '未知歌曲',
+        artist: detail.name || '未知歌手',
+        cover: detail.cover || '',
         platform,
         source: 'XZG',
-        audioUrl: detail.src,
+        audioUrl: detail.src || '',
         extra: {
-          quality: detail.quality,
+          quality: detail.quality || '',
           duration: this.parseDuration(detail.interval),
-          bitrate: parseInt(detail.kbps),
-          size: detail.size,
-          album: detail.album,
-          platformUrl: detail.songurl
+          bitrate: parseInt(detail.kbps) || 0,
+          size: detail.size || '',
+          album: detail.album || '',
+          platformUrl: detail.songurl || ''
         }
       }
     }

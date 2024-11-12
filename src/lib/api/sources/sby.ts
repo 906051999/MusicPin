@@ -169,11 +169,11 @@ export class SbyAPI implements MusicAPI {
   ): SearchResult[] {
     if ('data' in res) {
       if (platform === 'wy') {
-        return (res as WySearchResponse).data.map(item => ({
-          shortRequestUrl: `sby/${this.ENDPOINTS.wy}/?msg=${encodeURIComponent(keyword)}&n=${item.id}&type=json`,
+        return (res as WySearchResponse).data.map((item, index) => ({
+          shortRequestUrl: `sby/${this.ENDPOINTS.wy}/?msg=${encodeURIComponent(keyword)}&n=${index + 1}&type=json`,
           title: item.name,
           artist: item.singer,
-          cover: item.img,
+          cover: item.img || undefined,
           platform: 'wy',
           source: 'SBY',
           extra: {
@@ -181,8 +181,8 @@ export class SbyAPI implements MusicAPI {
           }
         }))
       } else if (platform === 'qq') {
-        return (res as QQSearchResponse).data.map(item => ({
-          shortRequestUrl: `sby/${this.ENDPOINTS.qq}/?word=${encodeURIComponent(keyword)}&n=${item.id}&type=json`,
+        return (res as QQSearchResponse).data.map((item, index) => ({
+          shortRequestUrl: `sby/${this.ENDPOINTS.qq}/?word=${encodeURIComponent(keyword)}&n=${index + 1}&type=json`,
           title: item.song,
           artist: item.singer,
           cover: item.cover,

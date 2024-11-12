@@ -87,7 +87,9 @@ export class CggAPI implements MusicAPI {
     platform: Platform, 
     source: APISource
   ): Promise<SongResponse> {
-    const url = getFullUrl(shortRequestUrl + '&type=json')
+    // 移除重复的 &type=json
+    const cleanUrl = shortRequestUrl.replace('&&type=json', '&type=json')
+    const url = getFullUrl(cleanUrl)
 
     try {
       switch (platform) {
@@ -176,8 +178,8 @@ export class CggAPI implements MusicAPI {
   private mapSearchResults(results: CGGSearchResult[], platform: Platform, keyword: string): SearchResult[] {
     if (!results) return []
     
-    return results.map(item => ({
-      shortRequestUrl: `cgg/${this.getEndpointForPlatform(platform)}?${this.buildDetailParams(keyword, item)}`,
+    return results.map((item, index) => ({
+      shortRequestUrl: `cgg/${this.getEndpointForPlatform(platform)}?msg=${encodeURIComponent(keyword)}&n=${index + 1}&type=json`,
       title: item.title || '',
       artist: item.singer || item.Nickname || '',
       cover: item.cover || '',
