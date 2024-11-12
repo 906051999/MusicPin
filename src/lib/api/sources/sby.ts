@@ -75,21 +75,26 @@ export class SbyAPI implements MusicAPI {
     console.log('[SbyAPI] Search URLs:', searchUrls)
 
     try {
-      const [wyRes, qqRes] = await apiRequest.parallelSearch<[WySearchResponse, QQSearchResponse]>(
+      const results = await apiRequest.parallelSearch<WySearchResponse | QQSearchResponse>(
         searchUrls,
         'SBY'
       )
 
-      console.log('[SbyAPI] Search results:', { wyRes, qqRes })
+      console.log('[SbyAPI] Search results:', results)
 
-      const results = [
-        ...this.mapWySearchResults(wyRes.data, keyword),
-        ...this.mapQQSearchResults(qqRes.data, keyword)
-      ]
+      const processedResults = results.flatMap((res, index) => {
+        if (index === 0) {
+          // WY 结果
+          return this.mapWySearchResults((res as WySearchResponse).data, keyword)
+        } else {
+          // QQ 结果
+          return this.mapQQSearchResults((res as QQSearchResponse).data, keyword)
+        }
+      })
 
       return {
         code: 200,
-        data: results.slice((page - 1) * limit, page * limit)
+        data: processedResults.slice((page - 1) * limit, page * limit)
       }
     } catch (error) {
       console.error('[SbyAPI] Search failed:', error)
@@ -112,23 +117,29 @@ export class SbyAPI implements MusicAPI {
 
   private mapWySearchResults(data: WySearchResponse['data'], keyword: string): SearchResult[] {
     return data.map(item => ({
-      shortRequestUrl: `sby/${this.ENDPOINTS.wy}/?msg=${keyword}&n=${item.id}`,
+      shortRequestUrl: `sby/${this.ENDPOINTS.wy}/?msg=${encodeURIComponent(keyword)}&n=${item.id}&type=json`,
       title: item.name,
       artist: item.singer,
       cover: item.img,
       platform: 'wy',
-      source: 'SBY'
+      source: 'SBY',
+      extra: {
+        cloudID: String(item.id)
+      }
     }))
   }
 
   private mapQQSearchResults(data: QQSearchResponse['data'], keyword: string): SearchResult[] {
     return data.map(item => ({
-      shortRequestUrl: `sby/${this.ENDPOINTS.qq}/?word=${keyword}&n=${item.id}`,
+      shortRequestUrl: `sby/${this.ENDPOINTS.qq}/?word=${encodeURIComponent(keyword)}&n=${item.id}&type=json`,
       title: item.song,
       artist: item.singer,
       cover: item.cover,
       platform: 'qq',
-      source: 'SBY'
+      source: 'SBY',
+      extra: {
+        cloudID: String(item.id)
+      }
     }))
   }
 

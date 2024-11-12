@@ -34,9 +34,9 @@ export class APIRequest {
   async get<T>(url: string, config?: RequestConfig): Promise<T> {
     console.log('[APIRequest] GET request:', { url, config })
     try {
-      const response = await this.client.get(url, config)
-      console.log('[APIRequest] Response:', response)
-      return response
+        const data = await this.client.get<unknown, T>(url, config)
+      console.log('[APIRequest] Response:', data)
+      return data
     } catch (error) {
       console.error('[APIRequest] Request failed:', error)
       throw error
@@ -44,7 +44,7 @@ export class APIRequest {
   }
 
   // POST请求
-  async post<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
+  async post<T, D = unknown>(url: string, data?: D, config?: RequestConfig): Promise<T> {
     return this.client.post(url, data, config)
   }
 

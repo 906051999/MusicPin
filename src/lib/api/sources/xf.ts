@@ -1,5 +1,5 @@
 import { MusicAPI } from '../base'
-import type { SearchResponse, SongResponse, LyricResponse } from '../types'
+import type { SearchResponse, SongResponse, LyricResponse, SearchResult } from '../types'
 import { getFullUrl } from '../config'
 import { apiRequest } from '@/lib/api/request'
 
@@ -45,7 +45,7 @@ export class XfAPI implements MusicAPI {
     wy: 'wangyi'
   } as const
 
-  async search(keyword: string, page = 1, limit = 20): Promise<SearchResponse> {
+  async search(keyword: string, _page? : 1, limit = 20): Promise<SearchResponse> {
     const res = await apiRequest.searchRequest<XFSearchResponse>(
       getFullUrl(`xf/${this.ENDPOINTS.wy}/search?search=${keyword}&limit=${limit}`),
       'XF'

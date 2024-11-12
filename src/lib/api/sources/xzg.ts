@@ -52,8 +52,8 @@ export class XzgAPI implements MusicAPI {
   } as const
 
   async search(keyword: string, page = 1, limit = 20): Promise<SearchResponse> {
-    const searchUrls = Object.entries(this.ENDPOINTS).map(([platform, api]) => 
-      getFullUrl(`xzg/${api}/?name=${keyword}&page=${page}&pagesize=${limit}`)
+    const searchUrls = Object.entries(this.ENDPOINTS).map(([, api]) => 
+      getFullUrl(`xzg/${api}/?name=${encodeURIComponent(keyword)}&page=${page}&pagesize=${limit}`)
     )
 
     const results = await apiRequest.parallelSearch<XZGResponse>(searchUrls, 'XZG')
@@ -63,7 +63,8 @@ export class XzgAPI implements MusicAPI {
       data: results.flatMap((res, index) => 
         this.mapSearchResults(
           res.data as XZGSearchResult[], 
-          Object.keys(this.ENDPOINTS)[index]
+          Object.keys(this.ENDPOINTS)[index] as keyof typeof this.ENDPOINTS,
+          keyword
         )
       )
     }
@@ -120,14 +121,17 @@ export class XzgAPI implements MusicAPI {
     }
   }
 
-  private mapSearchResults(results: XZGSearchResult[], platform: string): SearchResult[] {
+  private mapSearchResults(results: XZGSearchResult[], platform: keyof typeof this.ENDPOINTS, keyword: string): SearchResult[] {
     return results.map(item => ({
-      shortRequestUrl: `xzg/${this.ENDPOINTS[platform]}/?name=${item.songname}&n=1`,
+      shortRequestUrl: `xzg/${this.ENDPOINTS[platform]}/?name=${encodeURIComponent(keyword)}&n=${item.id || item.FileHash}`,
       title: item.songname,
       artist: item.name,
       cover: item.cover,
       platform,
-      source: 'XZG'
+      source: 'XZG',
+      extra: {
+        songId: item.id || item.FileHash
+      }
     }))
   }
 

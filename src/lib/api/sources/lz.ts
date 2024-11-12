@@ -1,5 +1,5 @@
 import { MusicAPI } from '../base'
-import type { SearchResponse, SongResponse, LyricResponse } from '../types'
+import type { SearchResponse, SongResponse, LyricResponse, SearchResult } from '../types'
 import { getFullUrl } from '../config'
 import { apiRequest } from '@/lib/api/request'
 
@@ -38,7 +38,7 @@ export class LzAPI implements MusicAPI {
     '5s': 'dg_5signmusic.php'
   } as const
 
-  async search(keyword: string, page = 1, limit = 20): Promise<SearchResponse> {
+  async search(keyword: string, _page?: 1, limit = 20): Promise<SearchResponse> {
     const searchUrls = [
       `lz/${this.ENDPOINTS.kg_sq}?${this.getSearchParams('kg_sq', keyword, limit)}&type=json`,
       `lz/${this.ENDPOINTS.kw}?${this.getSearchParams('kw', keyword, limit)}&type=json`,
@@ -53,7 +53,13 @@ export class LzAPI implements MusicAPI {
 
     return {
       code: 200,
-      data: results.flatMap(res => this.mapSearchResults(res.data))
+      data: results.flatMap((res, index) => 
+        this.mapSearchResults(
+          res.data, 
+          Object.keys(this.ENDPOINTS)[index] as keyof typeof this.ENDPOINTS,
+          keyword
+        )
+      )
     }
   }
 
@@ -65,30 +71,56 @@ export class LzAPI implements MusicAPI {
     return this.mapSongDetail(res, shortRequestUrl, platform)
   }
 
-  private mapSearchResults(results: LZSearchResult[]): SearchResult[] {
+  async getLyrics(shortRequestUrl: string): Promise<LyricResponse> {
+    const [platform, params] = this.parseUrl(shortRequestUrl)
+    const url = getFullUrl(`lz/${this.ENDPOINTS[platform]}?${params}&type=json`)
+    
+    const res = await apiRequest.detailRequest<LZSongDetail>(url, 'LZ')
+    
+    return {
+      code: res.code,
+      data: {
+        lyrics: res.lyrics || res.lrc || ''
+      }
+    }
+  }
+
+  private mapSearchResults(results: LZSearchResult[], platform: keyof typeof this.ENDPOINTS, keyword: string): SearchResult[] {
+    if (!results) return []
+    
     return results.map(item => ({
-      shortRequestUrl: `lz/${platform}/${this.buildDetailParams(platform, item, keyword)}`,
-      title: item.title,
-      artist: item.singer,
+      shortRequestUrl: `lz/${this.ENDPOINTS[platform]}?${this.buildDetailParams(platform, item, keyword)}`,
+      title: item.title || '',
+      artist: item.singer || '',
       platform: platform === 'kg_sq' ? 'kg' : platform,
-      source: 'LZ'
+      source: 'LZ',
+      extra: {
+        songId: item.songid || item.song_rid
+      }
     }))
   }
 
   private mapSongDetail(res: LZSongDetail, shortRequestUrl: string, platform: string): SongResponse {
+    if (!res) {
+      return {
+        code: 500,
+        data: null
+      }
+    }
+
     return {
       code: res.code,
       data: {
         shortRequestUrl,
-        title: res.title || res.song_name,
-        artist: res.singer || res.song_singer,
-        cover: res.cover || res.song_cover,
+        title: res.title || res.song_name || '',
+        artist: res.singer || res.song_singer || '',
+        cover: res.cover || res.song_cover || '',
         platform: platform === 'kg_sq' ? 'kg' : platform,
         source: 'LZ',
-        audioUrl: res.music_url || res.flac_url || res.url,
-        lyrics: res.lyrics || res.lrc,
+        audioUrl: res.music_url || res.flac_url || res.url || '',
+        lyrics: res.lyrics || res.lrc || '',
         extra: {
-          platformUrl: res.link
+          platformUrl: res.link || ''
         }
       }
     }
@@ -112,18 +144,20 @@ export class LzAPI implements MusicAPI {
   }
 
   private buildDetailParams(platform: string, item: LZSearchResult, keyword: string): string {
+    const baseParams = `msg=${encodeURIComponent(keyword)}&n=${item.n}&type=json`
     switch (platform) {
       case 'kw':
-        return `msg=${keyword}&n=${item.n}`
+        return baseParams
       case 'kg_sq':
-        return `msg=${keyword}&n=${item.n}&quality=flac`
+        return `${baseParams}&quality=flac`
       default:
-        return `msg=${keyword}&n=${item.n}`
+        return baseParams
     }
   }
 
   private parseUrl(url: string): [keyof typeof this.ENDPOINTS, string] {
-    const [_, platform, params] = url.split('/')
+    const [, platform, ...rest] = url.split('/')
+    const params = rest.join('/').replace('?', '')
     return [platform as keyof typeof this.ENDPOINTS, params]
   }
 }

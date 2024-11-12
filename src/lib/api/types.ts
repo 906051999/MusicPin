@@ -22,7 +22,7 @@ export interface SearchResult {
 export interface SongResponse {
     code: number;
     msg?: string;
-    data: SongDetail;
+    data: SongDetail | null;
 }
 
 export interface SongDetail {
