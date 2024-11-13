@@ -65,7 +65,7 @@ export class LzAPI implements MusicAPI {
       
       return {
         code: 200,
-        data: this.mapSearchResults(searchResults, platform, keyword)
+        data: this.mapSearchResults(searchResults, platform as LZPlatform, keyword)
       }
     } catch (error) {
       console.error('[LzAPI] Search error:', error)
@@ -214,7 +214,7 @@ export class LzAPI implements MusicAPI {
   private parseUrl(url: string): [Platform, string] {
     const [, endpoint, queryString] = url.split('/')
     
-    const platform = Object.entries(this.ENDPOINTS).find(([_, value]) => value === endpoint)?.[0] as Platform
+    const platform = Object.entries(this.ENDPOINTS).find(([, value]) => value === endpoint)?.[0] as Platform
     if (!platform) {
       throw new Error(`Invalid platform endpoint: ${endpoint}`)
     }

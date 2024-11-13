@@ -188,7 +188,7 @@ export class RequestStrategy {
   // 添加这个方法来获取可用的数据源
   private getAvailableSources(): APISource[] {
     return Object.entries(API_STATUS)
-      .filter(([_, enabled]) => enabled)
+      .filter(([, enabled]) => enabled)
       .map(([key]) => key.split(':')[1].toUpperCase() as APISource)
       .filter((source, index, self) => self.indexOf(source) === index); // 去重
   }
@@ -196,7 +196,7 @@ export class RequestStrategy {
   // 获取所有可用的API接口
   private getAvailableInterfaces(): Array<{ platform: Platform; source: APISource }> {
     return Object.entries(API_STATUS)
-      .filter(([key, enabled]) => enabled)
+      .filter(([, enabled]) => enabled)
       .map(([key]) => {
         const [platform, source] = key.split(':')
         return {
