@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Input, Select, Card, Group, Text, Button, Stack, Container, Badge } from '@mantine/core'
 import { IconSearch, IconX } from '@tabler/icons-react'
 import { useSearch, useSongDetail } from '@/lib/hooks/useMusic'
-import { PLATFORMS, API_INTERFACE, isSuccessCode, isInterfaceEnabled } from '@/lib/api/config'
+import { PLATFORMS, API_INTERFACE, isSuccessCode, isInterfaceEnabled, PLATFORM_COLORS } from '@/lib/api/config'
 import type { SearchResult } from '@/lib/api/types'
 import { Disclaimer } from '@/components/Disclaimer'
 import { notifications } from '@mantine/notifications'
@@ -143,13 +143,15 @@ export default function Home() {
           return isPlaying && songData?.data ? (
             <Card key={result.shortRequestUrl} withBorder shadow="sm">
               <Group align="flex-start" noWrap>
-                <Badge 
-                  size="sm" 
-                  variant="light"
-                  style={{ minWidth: '40px', textAlign: 'center' }}
-                >
-                  {PLATFORMS[result.platform as keyof typeof PLATFORMS]}
-                </Badge>
+                <div 
+                  style={{ 
+                    width: '4px',
+                    alignSelf: 'stretch',
+                    backgroundColor: PLATFORM_COLORS[result.platform as keyof typeof PLATFORM_COLORS],
+                    borderRadius: '2px',
+                    marginRight: '8px'
+                  }} 
+                />
                 <div style={{ flex: 1 }}>
                   <Text fw={500} lineClamp={1}>{songData.data.title || result.title}</Text>
                   <Text size="sm" c="dimmed" lineClamp={1}>
@@ -158,11 +160,24 @@ export default function Home() {
                   <Text size="xs" c="gray">
                     {songData.data.extra?.quality && `音质: ${songData.data.extra.quality}`}
                   </Text>
-                  <audio
+
+
+                </div>
+               
+                                    <Button
+                  variant="filled"
+                  onClick={() => handlePlay(result)}
+                  size="sm"
+                >
+                  停止播放
+                </Button>
+
+              </Group>
+              <audio
                     src={songData.data.audioUrl}
                     controls
                     autoPlay
-                    className="w-full mt-2"
+                    style={{ width: '100%', marginTop: '15px' }}
                     onEnded={() => setSelectedSong('')}
                     onError={() => {
                       setSelectedSong('')
@@ -174,15 +189,6 @@ export default function Home() {
                       })
                     }}
                   />
-                </div>
-                <Button
-                  variant="filled"
-                  onClick={() => handlePlay(result)}
-                  size="sm"
-                >
-                  停止播放
-                </Button>
-              </Group>
             </Card>
           ) : (
             <SearchResultCard
@@ -212,13 +218,15 @@ function SearchResultCard({
   return (
     <Card withBorder shadow="sm">
       <Group align="flex-start" noWrap>
-        <Badge 
-          size="sm" 
-          variant="light"
-          style={{ minWidth: '40px', textAlign: 'center' }}
-        >
-          {PLATFORMS[result.platform as keyof typeof PLATFORMS]}
-        </Badge>
+        <div 
+          style={{ 
+            width: '4px',
+            alignSelf: 'stretch',
+            backgroundColor: PLATFORM_COLORS[result.platform as keyof typeof PLATFORM_COLORS],
+            borderRadius: '2px',
+            marginRight: '8px'
+          }} 
+        />
         <div style={{ flex: 1 }}>
           <Text fw={500} lineClamp={1}>{result.title}</Text>
           <Text size="sm" c="dimmed" lineClamp={1}>{result.artist}</Text>

@@ -44,6 +44,8 @@ export const API_INTERFACE = {
     '5s': '五五',
     xmly: '西西'
   } as const;
+
+  
   
   export type Platform = keyof typeof PLATFORMS;
   
@@ -111,4 +113,19 @@ export function isInterfaceEnabled(platform: string, source: string): boolean {
   const key = `${platform}:${source.toLowerCase()}` as keyof typeof API_STATUS;
   return API_STATUS[key] ?? false;
 }
+
+// 平台颜色配置
+export const PLATFORM_COLORS = {
+  wy: '#E60026',   // 云云
+  kg: '#00A9FF',   // 狗狗
+  kg_sq: '#00A9FF', // 狗狗高品
+  mg: '#FD3B74',   // 咕咕
+  kw: '#FFE634',   // 蜗蜗
+  bd: '#315EFB',   // 点点
+  qq: '#12B7F5',   // 秋秋
+  dy: '#FF0050',   // 豆豆
+  qs: '#FF6A00',   // 七七
+  '5s': '#FF4B4B', // 五五
+  xmly: '#FF5100'  // 西西
+} as const;
 
