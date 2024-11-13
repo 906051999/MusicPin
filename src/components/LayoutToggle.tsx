@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 
 import { SegmentedControl, Box } from '@mantine/core'
 // 修改图标导入方式

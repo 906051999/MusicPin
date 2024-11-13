@@ -1,6 +1,8 @@
-import { APISource, isInterfaceEnabled, API_STATUS } from './config'
+import { APISource, isInterfaceEnabled, API_STATUS, Platform } from './config'
 import type { SearchResponse, SongResponse } from './types'
 import { apiManager } from './manager'
+import { compareTwoStrings } from 'string-similarity'
+import { s2t, t2s } from 'chinese-s2t'
 
 export class RequestStrategy {
   // 简化搜索结果验证
@@ -8,15 +10,33 @@ export class RequestStrategy {
     const data = result.data?.[0]
     if (!data?.title || !data?.artist || !data?.shortRequestUrl) return false
     
-    const searchTerms = keyword.toLowerCase().split(/\s+/)
-    const titleWords = data.title.toLowerCase().split(/\s+/)
-    const artistWords = data.artist.toLowerCase().split(/\s+/)
-    
-    // 只验证关键词匹配
-    return searchTerms.some(term => 
-      titleWords.some(word => word.includes(term)) || 
-      artistWords.some(word => word.includes(term))
-    )
+    // 使用 t2s 进行繁体转简体并清理文本
+    const cleanText = (text: string) => {
+      return t2s(text)  // 繁体转简体
+        .toLowerCase()
+        .replace(/\([^)]*\)/g, '')
+        .replace(/（[^）]*）/g, '')
+        .trim()
+    }
+
+    const searchText = cleanText(keyword)
+    const titleText = cleanText(data.title)
+    const artistText = cleanText(data.artist)
+
+    // 分别计算标题和艺术家的相似度
+    const titleSimilarity = compareTwoStrings(searchText, titleText)
+    const artistSimilarity = compareTwoStrings(searchText, artistText)
+
+    // 如果搜索词包含空格，可能是"歌名 歌手"格式
+    const [searchTitle, searchArtist] = searchText.split(/\s+/)
+    if (searchArtist) {
+      const titleMatch = compareTwoStrings(searchTitle, titleText) > 0.6
+      const artistMatch = compareTwoStrings(searchArtist, artistText) > 0.6
+      if (titleMatch && artistMatch) return true
+    }
+
+    // 单个词的搜索，只要标题或艺术家相似度够高就通过
+    return titleSimilarity > 0.8 || artistSimilarity > 0.8
   }
 
   // 简化歌曲详情验证

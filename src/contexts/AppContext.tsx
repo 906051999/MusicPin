@@ -16,6 +16,7 @@ interface AppContextType {
   handlePlay: (result: SearchResult) => void
   layout: 'ocean' | 'search'
   setLayout: (value: 'ocean' | 'search') => void
+  clearSearch: () => void
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -27,12 +28,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [shouldSearch, setShouldSearch] = useState(false)
   const [layout, setLayout] = useState<'ocean' | 'search'>('ocean')
 
+  const clearSearch = () => {
+    setSearchText('')
+    setSelectedSong('')
+    setShouldSearch(false)
+  }
+
   const handleSearch = () => {
-    if (keyword.trim()) {
-      setSearchText(keyword.trim())
-      setShouldSearch(false)
-      setTimeout(() => setShouldSearch(true), 0)
+    const trimmedKeyword = keyword.trim()
+    if (trimmedKeyword) {
+      setSearchText(trimmedKeyword)
+      setShouldSearch(true)
     }
+  }
+
+  const handleBubbleSearch = (song: string, artist: string) => {
+    clearSearch()
+    const newKeyword = `${song} ${artist}`
+    setKeyword(newKeyword)
+    setSearchText(newKeyword)
+    setShouldSearch(true)
   }
 
   const handlePlay = (result: SearchResult) => {
@@ -52,9 +67,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       shouldSearch,
       setShouldSearch,
       handleSearch,
+      handleBubbleSearch,
       handlePlay,
       layout,
-      setLayout
+      setLayout,
+      clearSearch,
     }}>
       {children}
     </AppContext.Provider>
