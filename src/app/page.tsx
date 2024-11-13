@@ -28,13 +28,11 @@ const getAvailablePlatforms = () => {
 export default function Home() {
   const [keyword, setKeyword] = useState('')
   const [searchText, setSearchText] = useState('')
-  const [platform, setPlatform] = useState<string>('wy')
-  const [source, setSource] = useState<string>(() => getInitialSource('wy'))
   const [selectedSong, setSelectedSong] = useState<string>('')
   const [shouldSearch, setShouldSearch] = useState(false)
   
-  const { data: searchData, isLoading: isSearching, error: searchError, refetch } = useSearch(searchText, platform, source, shouldSearch)
-  const { data: songData, error: songDetailError } = useSongDetail(selectedSong, platform, source)
+  const { data: searchData, isLoading: isSearching, error: searchError, refetch } = useSearch(searchText, shouldSearch)
+  const { data: songData, error: songDetailError } = useSongDetail(selectedSong)
 
   // 监听歌曲详情错误
   useEffect(() => {
@@ -45,10 +43,8 @@ export default function Home() {
         message: songDetailError.message || '无法获取歌曲详情',
         color: 'red',
         icon: <IconX />,
-        autoClose: 3000, // 延长通知时间
-        onClose: () => {
-          setSelectedSong('')
-        }
+        autoClose: 3000,
+        onClose: () => setSelectedSong('')
       })
     } else if (songData && !isSuccessCode(songData.data?.source as APISource, songData.code)) {
       console.error('Detailed song data error:', songData)
@@ -57,25 +53,11 @@ export default function Home() {
         message: songData.msg || '歌曲详情获取异常',
         color: 'red',
         icon: <IconX />,
-        autoClose: 3000, // 延长通知时间
-        onClose: () => {
-          setSelectedSong('')
-        }
+        autoClose: 3000,
+        onClose: () => setSelectedSong('')
       })
     }
   }, [songDetailError, songData])
-
-  // 修改 useEffect 来处理平台和源的关联
-  useEffect(() => {
-    const availableSources = Object.entries(API_INTERFACE)
-      .filter(([key]) => key.startsWith(`${platform}:`))
-      .map(([key]) => key.split(':')[1].toUpperCase())
-    
-    if (!availableSources.includes(source)) {
-      // 如果当前源不可用，自动切换到第一个可用源
-      setSource(availableSources[0] || 'XF')
-    }
-  }, [platform, source])
 
   const handleSearch = () => {
     if (keyword.trim()) {
@@ -95,20 +77,6 @@ export default function Home() {
   const resetSearch = () => {
     setShouldSearch(false)
   }
-
-  // 修改 sourceOptions 的获取方式
-  const sourceOptions = Array.from(new Set(
-    Object.entries(API_INTERFACE)
-      .filter(([key]) => {
-        const [plt, src] = key.split(':');
-        return plt === platform && isInterfaceEnabled(plt, src);
-      })
-      .map(([key]) => key.split(':')[1].toUpperCase())
-  ))
-  .map(source => ({
-    value: source,
-    label: `${PLATFORMS[platform as keyof typeof PLATFORMS]}(${source})`
-  }));
 
   const handlePlay = (result: SearchResult) => {
     if (selectedSong === result.shortRequestUrl) {
@@ -132,38 +100,10 @@ export default function Home() {
           value={keyword}
           onChange={(e) => {
             setKeyword(e.currentTarget.value)
-            resetSearch() // 输入变化时重置搜索状态
+            resetSearch()
           }}
           onKeyPress={handleKeyPress}
           className="flex-1"
-          size="md"
-        />
-        <Select
-          value={platform}
-          onChange={(value) => {
-            setPlatform(value || 'wy')
-            resetSearch() // 平台变化时重置搜索状态
-            setSelectedSong('') // 清除正在播放的歌曲
-            // 重置source为该平台的第一个可用源
-            const newSources = Object.entries(API_INTERFACE)
-              .filter(([key]) => key.startsWith(`${value}:`))
-            if (newSources.length > 0) {
-              setSource(newSources[0][0].split(':')[1].toUpperCase())
-            }
-          }}
-          data={getAvailablePlatforms()}
-          w={120}
-          size="md"
-        />
-        <Select
-          value={source}
-          onChange={(value) => {
-            setSource(value || 'XF')
-            resetSearch() // source变化时重置搜索状态
-            setSelectedSong('') // 清除正在播放的歌曲
-          }}
-          data={sourceOptions}
-          w={120}
           size="md"
         />
         <Button 
@@ -294,14 +234,3 @@ function SearchResultCard({
     </Card>
   )
 }
-
-const getInitialSource = (initialPlatform: string) => {
-  const availableSources = Object.entries(API_INTERFACE)
-    .filter(([key]) => {
-      const [plt, src] = key.split(':');
-      return plt === initialPlatform && isInterfaceEnabled(plt, src);
-    })
-    .map(([key]) => key.split(':')[1].toUpperCase());
-  
-  return availableSources[0] || 'XF';
-};

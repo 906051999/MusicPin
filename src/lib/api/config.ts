@@ -77,21 +77,32 @@ export function isSuccessCode(source: APISource, code: number): boolean {
 
 // 添加接口状态配置
 export const API_STATUS = {
+  // 云云
   'wy:sby': true,
-  'qq:sby': false, // 11.13 搜索返回400
   'wy:xf': true,
-  'kg:lz': true,
-  'kw:lz': false, // 11.13 搜索cors问题 
-  'wy:lz': true,
-  'kg_sq:lz': true,
   'wy:xzg': true,
-  'kg:xzg': true, 
+  'wy:lz': true,
+  
+  // 狗狗
+  'kg_sq:lz': true,
+  'kg:lz': true,
+  'kg:xzg': true,
+  
+  // 咕咕
+  'mg:lz': true,
+  
+  // 秋秋
+  'qq:sby': false, // 11.13 搜索返回400
+  
+  // 蜗蜗
+  'kw:lz': false, // 11.13 搜索cors问题
   'kw:xzg': false, // 11.13 搜索起始页码为0，结果对应不上
+  
+  // 其他
+  'bd:lz': false, // 11.13 搜索cors问题
   'dy:cgg': false, // 11.13 搜索返回正常，播放cors问题
   'qs:cgg': false, // 11.13 搜索cors问题
   'xmly:cgg': false, //有声、电台
-  'bd:lz': false, // 11.13 搜索cors问题
-  'mg:lz': true,
   '5s:lz': false, // 原创、伴奏、翻唱
 } as const;
 
