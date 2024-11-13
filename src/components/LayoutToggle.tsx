@@ -6,13 +6,16 @@ import { IconWash, IconSearch } from '@tabler/icons-react'
 import { useApp } from '@/contexts/AppContext'
 
 export function LayoutToggle() {
-  const { layout, setLayout } = useApp()
+  const { layout, setLayout, setSelectedSong } = useApp()
   
   return (
     <Box ta="center" mb="md">
       <SegmentedControl
         value={layout}
-        onChange={(value: 'ocean' | 'search') => setLayout(value)}
+        onChange={(value) => {
+          setLayout(value as 'ocean' | 'search')
+          setSelectedSong('')
+        }}
         data={[
           {
             value: 'ocean',

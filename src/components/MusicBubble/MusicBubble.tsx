@@ -14,12 +14,11 @@ interface MusicBubbleProps {
 }
 
 export function MusicBubble({ song, artist, comment }: MusicBubbleProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const { setKeyword, setLayout, handleSearch, clearSearch, handleBubbleSearch } = useApp()
+  const [isFocused, setIsFocused] = useState(false)
+  const { handleBubbleSearch } = useApp()
   
   const handleSearchClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setLayout('search')
     handleBubbleSearch(song, artist)
     
     notifications.show({
@@ -33,16 +32,16 @@ export function MusicBubble({ song, artist, comment }: MusicBubbleProps) {
   
   return (
     <Paper 
-      className={`${styles.bubble} ${isExpanded ? styles.expanded : ''}`}
-      radius="xl" 
+      className={`${styles.bubble} ${isFocused ? styles.focused : ''}`}
+      radius="md" 
       p="md" 
       withBorder
-      onClick={() => setIsExpanded(!isExpanded)}
-      pos="relative"
+      onClick={() => setIsFocused(!isFocused)}
+      style={{ position: 'relative' }}
     >
       <ActionIcon 
-        variant="subtle" 
-        pos="absolute" 
+        variant="outline"
+        style={{ position: 'absolute' }}
         top={8} 
         right={8}
         onClick={handleSearchClick}
@@ -50,13 +49,9 @@ export function MusicBubble({ song, artist, comment }: MusicBubbleProps) {
         <IconSearch size={16} />
       </ActionIcon>
       
-      <Text fw={700}>{song}</Text>
-      <Text size="sm" c="dimmed">{artist}</Text>
-      {isExpanded ? (
-        <Text mt="xs" size="sm">{comment}</Text>
-      ) : (
-        <Text mt="xs" size="sm" lineClamp={1}>{comment}</Text>
-      )}
+      <Text>{song}</Text>
+      <Text size="sm">{artist}</Text>
+      <Text mt="xs" size="sm">{comment}</Text>
     </Paper>
   )
 } 

@@ -1,14 +1,12 @@
 .bubble {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.bubble:hover {
-  transform: scale(1.02);
-}
-
-.expanded {
-  z-index: 1;
-  transform: scale(1.05);
-} 
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #eee;
+    transition: transform 0.2s ease;
+  }
+  
+  .focused {
+    transform: scale(1.02);
+    border: 1px solid #000;
+    z-index: 2;
+  }

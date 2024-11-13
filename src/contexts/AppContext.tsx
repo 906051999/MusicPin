@@ -48,6 +48,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setKeyword(newKeyword)
     setSearchText(newKeyword)
     setShouldSearch(true)
+    setLayout('search')
   }
 
   const handlePlay = (result: SearchResult) => {
