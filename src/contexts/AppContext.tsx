@@ -18,6 +18,7 @@ interface AppContextType {
   layout: 'ocean' | 'search'
   setLayout: (value: 'ocean' | 'search') => void
   clearSearch: () => void
+  handleBubbleSearch: (song: string, artist: string) => void
 }
 
 const AppContext = createContext<AppContextType | null>(null)

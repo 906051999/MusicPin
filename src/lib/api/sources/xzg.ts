@@ -45,12 +45,14 @@ interface XZGLyricResponse {
   }
 }
 
+type XZGPlatform = 'kg' | 'kw' | 'wy';
+
 export class XzgAPI implements MusicAPI {
-  private readonly ENDPOINTS = {
+  private readonly ENDPOINTS: Record<XZGPlatform, string> = {
     kg: 'Kugou_GN_new',
     kw: 'Kuwo_BD_new', 
     wy: 'NetEase_CloudMusic_new'
-  } as const
+  }
 
   async search(
     keyword: string, 
@@ -141,17 +143,12 @@ export class XzgAPI implements MusicAPI {
 
   // 根据平台获取对应的endpoint
   private getEndpointForPlatform(platform: Platform): string | undefined {
-    switch (platform) {
-      case 'kg': return this.ENDPOINTS.kg
-      case 'kw': return this.ENDPOINTS.kw
-      case 'wy': return this.ENDPOINTS.wy
-      default: return undefined
-    }
+    return (this.ENDPOINTS as Record<string, string>)[platform];
   }
 
   private mapSearchResults(results: XZGSearchResult[], platform: Platform, keyword: string): SearchResult[] {
     return results.map((item, index) => ({
-      shortRequestUrl: `xzg/${this.ENDPOINTS[platform]}/?name=${encodeURIComponent(keyword)}&n=${index + 1}`,
+      shortRequestUrl: `xzg/${this.ENDPOINTS[platform as XZGPlatform]}/?name=${encodeURIComponent(keyword)}&n=${index + 1}`,
       title: item.songname,
       artist: item.name,
       cover: item.cover,

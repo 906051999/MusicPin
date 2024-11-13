@@ -1,8 +1,15 @@
-import { APISource, isInterfaceEnabled, API_STATUS, Platform } from './config'
+import { APISource, API_STATUS, Platform } from './config'
 import type { SearchResponse, SongResponse } from './types'
 import { apiManager } from './manager'
 import Fuse from 'fuse.js'
-import { s2t, t2s } from 'chinese-s2t'
+import { t2s } from 'chinese-s2t'
+
+// 定义 Fuse.js 搜索模式的类型
+type FuseExpression = {
+  [key: string]: string;
+} | {
+  $and: Array<{ [key: string]: string }>;
+};
 
 export class RequestStrategy {
   // 简化搜索结果验证
@@ -57,10 +64,10 @@ export class RequestStrategy {
         }
 
         // 模糊匹配两种格式
-        const patterns = [
-          { $and: [{ title: possibleTitle }, { artist: possibleArtist }] },
-          { $and: [{ artist: possibleTitle }, { title: possibleArtist }] }
-        ]
+        const patterns: FuseExpression[] = [
+          { $and: [{ title: `=${possibleTitle}` }, { artist: `=${possibleArtist}` }] },
+          { $and: [{ artist: `=${possibleTitle}` }, { title: `=${possibleArtist}` }] }
+        ];
 
         for (const pattern of patterns) {
           const fuseResult = fuse.search(pattern)
@@ -81,8 +88,10 @@ export class RequestStrategy {
     const titleResult = fuse.search({ title: searchText })
     const artistResult = fuse.search({ artist: searchText })
     
-    return (titleResult.length > 0 && titleResult[0].score && titleResult[0].score < 0.3) ||
-           (artistResult.length > 0 && artistResult[0].score && artistResult[0].score < 0.3)
+    return (
+      (titleResult.length > 0 && titleResult[0].score !== undefined && titleResult[0].score < 0.3) ||
+      (artistResult.length > 0 && artistResult[0].score !== undefined && artistResult[0].score < 0.3)
+    );
   }
 
   // 简化歌曲详情验证

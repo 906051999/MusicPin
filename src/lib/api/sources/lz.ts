@@ -4,6 +4,8 @@ import { getFullUrl } from '../config'
 import { apiRequest } from '@/lib/api/request'
 import type { Platform, APISource } from '../config'
 
+type LZPlatform = 'kg_sq' | 'kg' | 'kw' | 'wy' | 'mg' | 'bd' | '5s';
+
 interface LZSearchResult {
   n: number
   title: string
@@ -32,7 +34,7 @@ interface LZSongDetail {
 }
 
 export class LzAPI implements MusicAPI {
-  private readonly ENDPOINTS = {
+  private readonly ENDPOINTS: Record<LZPlatform, string> = {
     kg_sq: 'dg_kugouSQ.php',
     kg: 'dg_kgmusic.php',
     kw: 'dg_kuwomusic.php', 
@@ -40,7 +42,7 @@ export class LzAPI implements MusicAPI {
     mg: 'dg_mgmusic.php',
     bd: 'dg_BDbdmusic.php',
     '5s': 'dg_5signmusic.php'
-  } as const
+  }
 
   async search(
     keyword: string, 
@@ -98,7 +100,7 @@ export class LzAPI implements MusicAPI {
     source: APISource
   ): Promise<LyricResponse> {
     const [requestPlatform, params] = this.parseUrl(shortRequestUrl)
-    const url = getFullUrl(`lz/${this.ENDPOINTS[requestPlatform]}?${params}&type=json`)
+    const url = getFullUrl(`lz/${this.ENDPOINTS[requestPlatform as LZPlatform]}?${params}&type=json`)
     
     try {
       const res = await apiRequest.detailRequest<LZSongDetail>(url, source)
@@ -121,19 +123,10 @@ export class LzAPI implements MusicAPI {
   }
 
   private getEndpointForPlatform(platform: Platform): string | undefined {
-    switch (platform) {
-      case 'kg_sq': return this.ENDPOINTS.kg_sq
-      case 'kg': return this.ENDPOINTS.kg
-      case 'kw': return this.ENDPOINTS.kw
-      case 'wy': return this.ENDPOINTS.wy
-      case 'mg': return this.ENDPOINTS.mg
-      case 'bd': return this.ENDPOINTS.bd
-      case '5s': return this.ENDPOINTS['5s']
-      default: return undefined
-    }
+    return (this.ENDPOINTS as Record<string, string>)[platform];
   }
 
-  private mapSearchResults(results: LZSearchResult[], platform: Platform, keyword: string): SearchResult[] {
+  private mapSearchResults(results: LZSearchResult[], platform: LZPlatform, keyword: string): SearchResult[] {
     if (!results?.length) return []
     
     console.log('[LzAPI] Mapping search results:', { results, platform })
@@ -218,10 +211,10 @@ export class LzAPI implements MusicAPI {
     }
   }
 
-  private parseUrl(url: string): [keyof typeof this.ENDPOINTS, string] {
+  private parseUrl(url: string): [Platform, string] {
     const [, endpoint, queryString] = url.split('/')
     
-    const platform = Object.entries(this.ENDPOINTS).find(([_, value]) => value === endpoint)?.[0]
+    const platform = Object.entries(this.ENDPOINTS).find(([_, value]) => value === endpoint)?.[0] as Platform
     if (!platform) {
       throw new Error(`Invalid platform endpoint: ${endpoint}`)
     }

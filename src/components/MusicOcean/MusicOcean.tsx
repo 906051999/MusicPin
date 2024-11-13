@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Box, Paper, Text } from '@mantine/core'
+import { Box } from '@mantine/core'
 import styles from './MusicOcean.module.css'
 import { MusicBubble } from '../MusicBubble/MusicBubble'
 

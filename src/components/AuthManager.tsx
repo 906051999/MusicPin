@@ -22,6 +22,7 @@ export function AuthManager() {
   const { api, setAuth, disclaimer } = useAuthStore()
   const [showDisclaimer, setShowDisclaimer] = useState(false)
   const [showApiConsent, setShowApiConsent] = useState(false)
+  const [isInitialCheck, setIsInitialCheck] = useState(true)
   const [pendingCallback, setPendingCallback] = useState<{
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -50,6 +51,13 @@ export function AuthManager() {
       window.removeEventListener('showApiConsent', handleShowApiConsent)
       window.removeEventListener('requestApiAuth', handleApiAuthRequest)
     }
+  }, [])
+
+  useEffect(() => {
+    if (isInitialCheck && !disclaimer) {
+      setShowDisclaimer(true)
+    }
+    setIsInitialCheck(false)
   }, [])
 
   const handleApiConsent = (agreed: boolean) => {

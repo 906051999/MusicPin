@@ -64,13 +64,13 @@ export const API_INTERFACE = {
   } 
 
   // 添加 API 成功状态码配置
-export const API_SUCCESS_CODES = {
-  CGG: [200],
-  LZ: [200],
-  SBY: [200],
-  XF: [200],
-  XZG: [0, 200]
-} as const;
+  export const API_SUCCESS_CODES: Record<APISource, number[]> = {
+    CGG: [200],
+    LZ: [200],
+    SBY: [200],
+    XF: [200],
+    XZG: [0, 200]
+  };
 
 // 工具函数：检查是否为成功状态码
 export function isSuccessCode(source: APISource, code: number): boolean {

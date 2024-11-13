@@ -4,10 +4,16 @@ import { useState, useEffect } from 'react'
 import { Modal, Text, Button, Group, Stack, Container, Box } from '@mantine/core'
 import { useAuthStore } from '@/stores/authStore'
 
-export function Disclaimer() {
+// Add props interface
+interface DisclaimerProps {
+  opened: boolean;
+  onClose: () => void;
+}
+
+// Update component to accept props
+export function Disclaimer({ opened: externalOpened, onClose }: DisclaimerProps) {
   const { disclaimer, setAuth } = useAuthStore()
   const [mounted, setMounted] = useState(false)
-  const [opened, setOpened] = useState(false)
   const [countdown, setCountdown] = useState(5)
   const [isManualShow, setIsManualShow] = useState(false)
 
@@ -17,14 +23,13 @@ export function Disclaimer() {
 
   useEffect(() => {
     if (mounted && !disclaimer) {
-      setOpened(true)
       setCountdown(5)
     }
   }, [mounted, disclaimer])
 
   useEffect(() => {
     const handleShowDisclaimer = () => {
-      setOpened(true)
+      onClose()
       setIsManualShow(true)
     }
 
@@ -33,33 +38,38 @@ export function Disclaimer() {
   }, [disclaimer])
 
   useEffect(() => {
-    if (opened && !disclaimer && countdown > 0 && !isManualShow) {
+    if (externalOpened && countdown > 0 && !isManualShow) {
       const timer = setInterval(() => setCountdown(c => c - 1), 1000)
       return () => clearInterval(timer)
     }
-    if (countdown === 0 && !disclaimer && !isManualShow) handleAgree()
-  }, [countdown, opened, disclaimer, isManualShow])
+    if (countdown === 0 && !isManualShow) handleAgree()
+  }, [countdown, externalOpened, isManualShow])
 
   const handleAgree = () => {
     setAuth('disclaimer', true)
-    setOpened(false)
+    onClose()
     setCountdown(5)
     setIsManualShow(false)
   }
 
   const handleDisagree = () => {
     setAuth('disclaimer', false)
-    setOpened(false)
+    onClose()
     setCountdown(5)
     setIsManualShow(false)
+  }
+
+  const handleTemporaryLeave = () => {
+    setAuth('disclaimer', false)
+    onClose()
   }
 
   if (!mounted) return null
 
   return (
     <Modal
-      opened={opened}
-      onClose={() => disclaimer && setOpened(false)}
+      opened={externalOpened}
+      onClose={() => disclaimer && onClose()}
       closeOnClickOutside={false}
       withCloseButton={false}
       closeOnEscape={false}
@@ -119,25 +129,50 @@ export function Disclaimer() {
 
         <Box bg="gray.2" py="xl">
           <Group justify="center" gap="md">
-            <Button
-              onClick={handleDisagree}
-              size="md"
-              px="xl"
-              variant="light"
-              color="red"
-            >
-              离港
-            </Button>
-            <Button
-              onClick={handleAgree}
-              disabled={!disclaimer && countdown > 0 && !isManualShow}
-              size="md"
-              px="xl"
-              variant="light"
-              color="blue"
-            >
-              启航 {!disclaimer && countdown > 0 && !isManualShow ? `(${countdown})` : ''}
-            </Button>
+            {disclaimer ? (
+              <>
+                <Button
+                  onClick={handleTemporaryLeave}
+                  size="md"
+                  px="xl"
+                  variant="light"
+                  color="yellow"
+                >
+                  我想离港
+                </Button>
+                <Button
+                  onClick={onClose}
+                  size="md"
+                  px="xl"
+                  variant="light"
+                  color="blue"
+                >
+                  已同意
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={handleDisagree}
+                  size="md"
+                  px="xl"
+                  variant="light"
+                  color="red"
+                >
+                  确认离港
+                </Button>
+                <Button
+                  onClick={handleAgree}
+                  disabled={countdown > 0 && !isManualShow}
+                  size="md"
+                  px="xl"
+                  variant="light"
+                  color="blue"
+                >
+                  启航 {countdown > 0 && !isManualShow ? `(${countdown})` : ''}
+                </Button>
+              </>
+            )}
           </Group>
         </Box>
       </Box>
