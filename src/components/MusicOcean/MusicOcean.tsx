@@ -66,6 +66,12 @@ const testBubbles: MusicBubble[] = [
     song: 'Playing God',
     artist: 'Polyphia',
     comment: 'Tim Henson的指弹技巧炫技却不失音乐性,融合了trap和prog metal的编曲思路。主riff的节奏设计极具创意,和声进行充满现代感'
+  },
+  {
+    id: '10',
+    song: '爱在西元前',
+    artist: '周杰伦',
+    comment: '古典和中国风的完美结合,钢琴和琵琶的对话极具新意。副歌前的转调设计巧妙,弦乐编排层次分明'
   }
 ]
 

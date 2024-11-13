@@ -1,7 +1,7 @@
 import { APISource, isInterfaceEnabled, API_STATUS, Platform } from './config'
 import type { SearchResponse, SongResponse } from './types'
 import { apiManager } from './manager'
-import { compareTwoStrings } from 'string-similarity'
+import Fuse from 'fuse.js'
 import { s2t, t2s } from 'chinese-s2t'
 
 export class RequestStrategy {
@@ -10,9 +10,8 @@ export class RequestStrategy {
     const data = result.data?.[0]
     if (!data?.title || !data?.artist || !data?.shortRequestUrl) return false
     
-    // 使用 t2s 进行繁体转简体并清理文本
     const cleanText = (text: string) => {
-      return t2s(text)  // 繁体转简体
+      return t2s(text)
         .toLowerCase()
         .replace(/\([^)]*\)/g, '')
         .replace(/（[^）]*）/g, '')
@@ -23,20 +22,42 @@ export class RequestStrategy {
     const titleText = cleanText(data.title)
     const artistText = cleanText(data.artist)
 
-    // 分别计算标题和艺术家的相似度
-    const titleSimilarity = compareTwoStrings(searchText, titleText)
-    const artistSimilarity = compareTwoStrings(searchText, artistText)
+    // 创建搜索对象
+    const searchItem = { title: titleText, artist: artistText }
+    const fuseOptions = {
+      keys: ['title', 'artist'],
+      threshold: 0.4,
+      ignoreLocation: true,
+      useExtendedSearch: true
+    }
+    const fuse = new Fuse([searchItem], fuseOptions)
 
-    // 如果搜索词包含空格，可能是"歌名 歌手"格式
-    const [searchTitle, searchArtist] = searchText.split(/\s+/)
-    if (searchArtist) {
-      const titleMatch = compareTwoStrings(searchTitle, titleText) > 0.6
-      const artistMatch = compareTwoStrings(searchArtist, artistText) > 0.6
-      if (titleMatch && artistMatch) return true
+    // 尝试精确匹配 "歌名 歌手" 格式
+    const lastSpaceIndex = searchText.lastIndexOf(' ')
+    if (lastSpaceIndex > 0) {
+      const searchTitle = searchText.slice(0, lastSpaceIndex)
+      const searchArtist = searchText.slice(lastSpaceIndex + 1)
+      
+      if (searchTitle === titleText && searchArtist === artistText) {
+        return true
+      }
+
+      // 使用 Fuse.js 进行模糊匹配
+      const pattern = {
+        $and: [
+          { title: searchTitle },
+          { artist: searchArtist }
+        ]
+      }
+      const fuseResult = fuse.search(pattern)
+      if (fuseResult.length > 0 && fuseResult[0].score && fuseResult[0].score < 0.4) {
+        return true
+      }
     }
 
-    // 单个词的搜索，只要标题或艺术家相似度够高就通过
-    return titleSimilarity > 0.8 || artistSimilarity > 0.8
+    // 对整个搜索词进行模糊匹配
+    const fuseResult = fuse.search(searchText)
+    return fuseResult.length > 0 && fuseResult[0].score && fuseResult[0].score < 0.3
   }
 
   // 简化歌曲详情验证
