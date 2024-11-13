@@ -15,6 +15,8 @@ export class RequestStrategy {
         .toLowerCase()
         .replace(/\([^)]*\)/g, '')
         .replace(/（[^）]*）/g, '')
+        .replace(/[,，、]/g, ' ')  // 将常见分隔符转为空格
+        .replace(/\s+/g, ' ')     // 合并多个空格
         .trim()
     }
 
@@ -26,38 +28,61 @@ export class RequestStrategy {
     const searchItem = { title: titleText, artist: artistText }
     const fuseOptions = {
       keys: ['title', 'artist'],
-      threshold: 0.4,
+      threshold: 0.45,    // 稍微放宽阈值
       ignoreLocation: true,
       useExtendedSearch: true
     }
     const fuse = new Fuse([searchItem], fuseOptions)
 
-    // 尝试精确匹配 "歌名 歌手" 格式
-    const lastSpaceIndex = searchText.lastIndexOf(' ')
-    if (lastSpaceIndex > 0) {
-      const searchTitle = searchText.slice(0, lastSpaceIndex)
-      const searchArtist = searchText.slice(lastSpaceIndex + 1)
-      
-      if (searchTitle === titleText && searchArtist === artistText) {
-        return true
-      }
+    // 1. 尝试精确匹配
+    if (searchText === titleText || searchText === artistText) {
+      return true
+    }
 
-      // 使用 Fuse.js 进行模糊匹配
-      const pattern = {
-        $and: [
-          { title: searchTitle },
-          { artist: searchArtist }
+    // 2. 尝试智能分割歌名和歌手
+    const parts = searchText.split(' ')
+    if (parts.length >= 2) {
+      // 尝试不同的分割点
+      for (let i = 1; i < parts.length; i++) {
+        const possibleTitle = parts.slice(0, i).join(' ')
+        const possibleArtist = parts.slice(i).join(' ')
+        
+        // 正向匹配: 歌名 歌手
+        if (possibleTitle === titleText && possibleArtist === artistText) {
+          return true
+        }
+        // 反向匹配: 歌手 歌名
+        if (possibleTitle === artistText && possibleArtist === titleText) {
+          return true
+        }
+
+        // 模糊匹配两种格式
+        const patterns = [
+          { $and: [{ title: possibleTitle }, { artist: possibleArtist }] },
+          { $and: [{ artist: possibleTitle }, { title: possibleArtist }] }
         ]
-      }
-      const fuseResult = fuse.search(pattern)
-      if (fuseResult.length > 0 && fuseResult[0].score && fuseResult[0].score < 0.4) {
-        return true
+
+        for (const pattern of patterns) {
+          const fuseResult = fuse.search(pattern)
+          if (fuseResult.length > 0 && fuseResult[0].score && fuseResult[0].score < 0.4) {
+            return true
+          }
+        }
       }
     }
 
-    // 对整个搜索词进行模糊匹配
+    // 3. 对整个搜索词进行模糊匹配
     const fuseResult = fuse.search(searchText)
-    return fuseResult.length > 0 && fuseResult[0].score && fuseResult[0].score < 0.3
+    if (fuseResult.length > 0 && fuseResult[0].score && fuseResult[0].score < 0.35) {
+      return true
+    }
+
+    // 4. 分别对歌名和歌手进行模糊匹配
+    const titleResult = fuse.search({ title: searchText })
+    const artistResult = fuse.search({ artist: searchText })
+    
+    return (titleResult.length > 0 && titleResult[0].score && titleResult[0].score < 0.3) ||
+           (artistResult.length > 0 && artistResult[0].score && artistResult[0].score < 0.3)
   }
 
   // 简化歌曲详情验证
@@ -70,23 +95,33 @@ export class RequestStrategy {
     keyword: string,
     platform: Platform,
     source: APISource
-  ): Promise<SearchResponse | null> {
+  ): Promise<{ result: SearchResponse | null; fallback: SearchResponse | null }> {
     try {
       const result = await apiManager.search(keyword, platform, source)
       
+      // 如果有数据，先保存为兜底结果
+      let fallback: SearchResponse | null = null
+      if (result.data?.[0]?.shortRequestUrl) {
+        const detail = await apiManager.getSongDetail(result.data[0].shortRequestUrl, platform, source)
+        if (this.validateSongDetail(detail)) {
+          fallback = result
+        }
+      }
+
+      // 尝试验证匹配度
       if (this.validateSearchResult(result, keyword)) {
         const firstSong = result.data?.[0]
         if (firstSong?.shortRequestUrl) {
           const detail = await apiManager.getSongDetail(firstSong.shortRequestUrl, platform, source)
           if (this.validateSongDetail(detail)) {
-            return result
+            return { result, fallback: null }
           }
         }
       }
-      return null
+      return { result: null, fallback }
     } catch (error) {
       console.error(`Interface test failed for ${platform}:${source}:`, error)
-      return null
+      return { result: null, fallback: null }
     }
   }
 
@@ -97,15 +132,26 @@ export class RequestStrategy {
       throw new Error('没有可用的数据源')
     }
 
-    // 依次测试每个接口，找到第一个合格的就返回
+    let firstFallback: SearchResponse | null = null
+
+    // 依次测试每个接口
     for (const { platform, source } of interfaces) {
-      const result = await this.testInterface(keyword, platform, source)
+      const { result, fallback } = await this.testInterface(keyword, platform, source)
       if (result) {
         return result
       }
+      // 保存第一个有效的兜底结果
+      if (!firstFallback && fallback) {
+        firstFallback = fallback
+      }
     }
 
-    throw new Error('未找到匹配度足够高的结果')
+    // 如果有兜底结果就使用
+    if (firstFallback) {
+      return firstFallback
+    }
+
+    throw new Error('未找到任何可用结果')
   }
 
   // 简化智能获取歌曲详情
