@@ -4,37 +4,76 @@ import { Container, Text } from '@mantine/core'
 import { AppProvider } from '@/contexts/AppContext'
 import { SearchBar } from '@/components/Search/SearchBar'
 import { SearchResults } from '@/components/Search/SearchResults'
-import { Disclaimer } from '@/components/Disclaimer'
-import { MusicOcean } from '@/components/MusicOcean/MusicOcean'
 import { LayoutToggle } from '@/components/LayoutToggle'
 import { useApp } from '@/contexts/AppContext'
+import { AuthManager } from '@/components/AuthManager'
+import { useAuthStore } from '@/stores/authStore'
+import { MusicOcean } from '@/components/MusicOcean/MusicOcean'
+import { NoAccess } from '@/components/Auth/NoAccess'
 
 function MainContent() {
   const { layout } = useApp()
+  const { disclaimer } = useAuthStore()
+  
+  if (!disclaimer) {
+    return (
+      <>
+        <AuthManager />
+        <NoAccess />
+      </>
+    )
+  }
   
   return (
-    <>
-      <Disclaimer />
-      <Text size="xl" fw={700} ta="center" mb="xl">
+    <div style={{ 
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1,
+      overflow: 'auto',
+      gap: '1rem'
+    }}>
+      <AuthManager />
+      <Text size="xl" fw={700} ta="center">
         MusicPin Demo
       </Text>
       <LayoutToggle />
-      {layout === 'ocean' ? (
-        <MusicOcean />
-      ) : (
-        <>
-          <SearchBar />
-          <SearchResults />
-        </>
-      )}
-    </>
+      <Container 
+        size="md"
+        style={{ 
+          flex: 1,
+          overflow: 'auto',
+          padding: '0 1rem',
+          minHeight: 0,
+          width: '100%'
+        }}
+      >
+        {layout === 'ocean' ? (
+          <MusicOcean />
+        ) : (
+          <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
+            <SearchBar />
+            <SearchResults />
+          </div>
+        )}
+      </Container>
+    </div>
   )
 }
 
 export default function Home() {
   return (
     <AppProvider>
-      <Container size="md" py="xl">
+      <Container 
+      
+        py="xl" 
+        style={{
+          height: '100vh',
+          display: 'flex',
+          overflow: 'hidden',
+          flexDirection: 'column',
+          maxWidth: '100%'
+        }}
+      >
         <MainContent />
       </Container>
     </AppProvider>

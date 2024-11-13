@@ -10,7 +10,7 @@
 - 数据缓存：tanstack/query-sync-storage-persister、tanstack/react-query-persist-client
 - 全局状态：zustand
 - 数据存储：localforage
-- UI库：Mantine
+- UI库：Mantine v7
 - 动画：framer-motion
 - 手势：use-gesture/react
 - 通知：sonner 或 mantine/notifications

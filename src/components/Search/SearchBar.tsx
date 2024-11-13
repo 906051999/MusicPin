@@ -12,7 +12,7 @@ export function SearchBar() {
   }
 
   return (
-    <Group mb="xl">
+    <Group mb="xl" style={{ width: '100%' }}>
       <Input
         placeholder="输入关键词搜索..."
         value={keyword}
@@ -21,7 +21,7 @@ export function SearchBar() {
           setShouldSearch(false)
         }}
         onKeyPress={handleKeyPress}
-        className="flex-1"
+        style={{ flex: 1 }}
         size="md"
       />
       <Button 

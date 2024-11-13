@@ -42,7 +42,7 @@ export function SearchResults() {
   }, [songDetailError, songData, setSelectedSong])
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" style={{ width: '100%' }}>
       {/* 搜索状态展示 */}
       {isLoading ? (
         <Text ta="center" c="dimmed">搜索中...</Text>

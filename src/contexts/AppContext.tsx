@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react'
 import type { SearchResult } from '@/lib/api/types'
+import { useAuthStore } from '@/stores/authStore'
 
 interface AppContextType {
   keyword: string
@@ -27,6 +28,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedSong, setSelectedSong] = useState('')
   const [shouldSearch, setShouldSearch] = useState(false)
   const [layout, setLayout] = useState<'ocean' | 'search'>('ocean')
+  const { requestApiAuth } = useAuthStore()
 
   const clearSearch = () => {
     setSearchText('')
@@ -34,21 +36,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setShouldSearch(false)
   }
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     const trimmedKeyword = keyword.trim()
     if (trimmedKeyword) {
-      setSearchText(trimmedKeyword)
-      setShouldSearch(true)
+      const apiAuthorized = await requestApiAuth()
+      if (apiAuthorized) {
+        setSearchText(trimmedKeyword)
+        setShouldSearch(true)
+      }
     }
   }
 
-  const handleBubbleSearch = (song: string, artist: string) => {
-    clearSearch()
-    const newKeyword = `${song} ${artist}`
-    setKeyword(newKeyword)
-    setSearchText(newKeyword)
-    setShouldSearch(true)
-    setLayout('search')
+  const handleBubbleSearch = async (song: string, artist: string) => {
+    const apiAuthorized = await requestApiAuth()
+    if (apiAuthorized) {
+      clearSearch()
+      const newKeyword = `${song} ${artist}`
+      setKeyword(newKeyword)
+      setSearchText(newKeyword)
+      setShouldSearch(true)
+      setLayout('search')
+    }
   }
 
   const handlePlay = (result: SearchResult) => {

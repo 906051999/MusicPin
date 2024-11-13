@@ -5,7 +5,6 @@ import { Paper, Text, ActionIcon } from '@mantine/core'
 import { IconSearch } from '@tabler/icons-react'
 import { useApp } from '@/contexts/AppContext'
 import styles from './MusicBubble.module.css'
-import { notifications } from '@mantine/notifications'
 
 interface MusicBubbleProps {
   song: string
@@ -20,14 +19,7 @@ export function MusicBubble({ song, artist, comment }: MusicBubbleProps) {
   const handleSearchClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     handleBubbleSearch(song, artist)
-    
-    notifications.show({
-      title: '搜索中',
-      message: `正在搜索: ${song} - ${artist}`,
-      loading: true,
-      autoClose: 2000,
-      withCloseButton: false
-    })
+
   }
   
   return (
