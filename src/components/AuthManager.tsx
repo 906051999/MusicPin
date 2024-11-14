@@ -5,6 +5,7 @@ import { ApiConsent } from '@/components/Auth/ApiConsent'
 import { AuthStatus } from '@/components/Auth/AuthStatus'
 import { useAuthStore } from '@/stores/authStore'
 import { useEffect, useState } from 'react'
+import { UserAuth } from '@/components/Auth/UserAuth'
 
 // 定义自定义事件类型
 declare global {
@@ -15,6 +16,7 @@ declare global {
     }>;
     'showApiConsent': CustomEvent;
     'showDisclaimer': CustomEvent;
+    'showUserAuth': CustomEvent;
   }
 }
 
@@ -27,10 +29,12 @@ export function AuthManager() {
     onSuccess?: () => void;
     onCancel?: () => void;
   }>({})
+  const [showUserAuth, setShowUserAuth] = useState(false)
 
   useEffect(() => {
     const handleShowDisclaimer = () => setShowDisclaimer(true)
     const handleShowApiConsent = () => setShowApiConsent(true)
+    const handleShowUserAuth = () => setShowUserAuth(true)
     const handleApiAuthRequest = (event: CustomEvent<{
       onSuccess?: () => void;
       onCancel?: () => void;
@@ -44,11 +48,13 @@ export function AuthManager() {
 
     window.addEventListener('showDisclaimer', handleShowDisclaimer)
     window.addEventListener('showApiConsent', handleShowApiConsent)
+    window.addEventListener('showUserAuth', handleShowUserAuth)
     window.addEventListener('requestApiAuth', handleApiAuthRequest)
     
     return () => {
       window.removeEventListener('showDisclaimer', handleShowDisclaimer)
       window.removeEventListener('showApiConsent', handleShowApiConsent)
+      window.removeEventListener('showUserAuth', handleShowUserAuth)
       window.removeEventListener('requestApiAuth', handleApiAuthRequest)
     }
   }, [])
@@ -84,6 +90,9 @@ export function AuthManager() {
           onCancel={() => handleApiConsent(false)}
           readOnly={api}
         />
+      )}
+      {showUserAuth && (
+        <UserAuth onClose={() => setShowUserAuth(false)} />
       )}
     </>
   )

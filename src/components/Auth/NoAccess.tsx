@@ -3,6 +3,7 @@
 import { Container, Stack, Title, Text, Button } from '@mantine/core'
 import { IconAlertTriangle, IconMusicHeart, IconWash, IconStars, IconVinyl, IconMicrophone2, IconHeadphones } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
 
 function FloatingElements() {
   const elements = [
@@ -51,8 +52,18 @@ function FloatingElements() {
 }
 
 export function NoAccess() {
+  const [isMounted, setIsMounted] = useState(false)
+  
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const handleShowDisclaimer = () => {
     window.dispatchEvent(new CustomEvent('showDisclaimer'))
+  }
+
+  if (!isMounted) {
+    return null
   }
 
   return (

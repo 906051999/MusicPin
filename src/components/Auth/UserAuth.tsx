@@ -1,51 +1,60 @@
 'use client'
 
-import { useState } from 'react'
-import { Modal, Text, Button, Group, Stack, TextInput, PasswordInput } from '@mantine/core'
+import { Modal } from '@mantine/core'
+import { Auth } from '@supabase/auth-ui-react'
+import { ThemeSupa } from '@supabase/auth-ui-shared'
+import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
+import { useState } from 'react'
+import { UserProfile } from './UserProfile'
+import { authLocalization } from '@/lib/localization/auth'
 
-export function UserAuth() {
+interface UserAuthProps {
+  onClose: () => void
+}
+
+export function UserAuth({ onClose }: UserAuthProps) {
   const { setAuth } = useAuthStore()
-  const [isLogin, setIsLogin] = useState(true)
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // 这里添加实际的登录/注册逻辑
-    setAuth('user', true)
-  }
+  const [showProfile, setShowProfile] = useState(false)
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      setAuth('user', true)
+      onClose()
+      setShowProfile(true)
+    }
+  })
 
   return (
-    <Modal
-      opened={true}
-      onClose={() => {}}
-      title={isLogin ? "登录" : "注册"}
-      size="sm"
-    >
-      <form onSubmit={handleSubmit}>
-        <Stack>
-          <TextInput
-            required
-            label="用户名"
-            placeholder="请输入用户名"
-          />
-          <PasswordInput
-            required
-            label="密码"
-            placeholder="请输入密码"
-          />
-          
-          <Button type="submit" fullWidth>
-            {isLogin ? "登录" : "注册"}
-          </Button>
-          
-          <Group justify="center">
-            <Text size="sm" c="dimmed" style={{ cursor: 'pointer' }}
-              onClick={() => setIsLogin(!isLogin)}>
-              {isLogin ? "没有账号？点击注册" : "已有账号？点击登录"}
-            </Text>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+    <>
+      <Modal
+        opened={true}
+        onClose={onClose}
+        title="认证"
+        size="sm"
+      >
+        <Auth
+          supabaseClient={supabase}
+          appearance={{ 
+            theme: ThemeSupa,
+            variables: {
+              default: {
+                colors: {
+                  brand: '#000000',
+                  brandAccent: '#333333',
+                },
+              },
+            },
+          }}
+          localization={authLocalization}
+          providers={['github']}
+          view="sign_in"
+        />
+      </Modal>
+      <UserProfile 
+        opened={showProfile} 
+        onClose={() => setShowProfile(false)} 
+      />
+    </>
   )
 } 
