@@ -59,7 +59,8 @@ export function UserProfile({ opened, onClose }: UserProfileProps) {
     notifications.show({
       title: '已登出',
       message: '期待您的下次登录',
-      color: 'blue'
+      color: 'blue',
+      autoClose: 1000
     })
     onClose()
   }
