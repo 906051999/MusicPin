@@ -9,8 +9,9 @@ import {
   IconCircleCheck,
   IconCircleX
 } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { UserProfile } from './UserProfile'
+import { useSession } from 'next-auth/react'
 
 type StatusItem = {
   key: 'disclaimer' | 'api' | 'user'
@@ -22,8 +23,13 @@ type StatusItem = {
 }
 
 export function AuthStatus() {
-  const { disclaimer, api, user, session, requestApiAuth } = useAuthStore()
+  const { disclaimer, api, user, setAuth } = useAuthStore()
+  const { data: session } = useSession()
   const [showProfile, setShowProfile] = useState(false)
+
+  useEffect(() => {
+    setAuth('user', !!session?.user)
+  }, [session, setAuth])
 
   const handleClick = async (type: 'disclaimer' | 'api' | 'user') => {
     switch (type) {
@@ -66,7 +72,7 @@ export function AuthStatus() {
       key: 'user',
       icon: IconUser,
       label: '',
-      description: user ? `已登录: ${session?.user?.email}` : '点击登录',
+      description: user ? `已登录: ${session?.user?.name}` : '点击登录',
       agreed: user,
       menu: user
     }
