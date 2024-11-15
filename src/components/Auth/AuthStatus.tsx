@@ -8,7 +8,7 @@ import {
   IconUser,
   IconCircleCheck,
   IconCircleX,
-  IconDatabase
+  IconDatabase,
 } from '@tabler/icons-react'
 import { useState, useEffect } from 'react'
 import { UserProfile } from './UserProfile'
@@ -23,11 +23,12 @@ type StatusItem = {
   description: string
   agreed: boolean
   menu?: boolean
+  syncStatus?: 'idle' | 'syncing' | 'synced' | 'error'
 }
 
 export function AuthStatus() {
-  const { disclaimer, api, user, setAuth } = useAuthStore()
-  const { data: session } = useSession()
+  const { disclaimer, api, user, syncStatus, setAuth } = useAuthStore()
+  const { data: nextAuthSession } = useSession()
   const [showProfile, setShowProfile] = useState(false)
   const [dbStatus, setDbStatus] = useState<{
     browser: boolean
@@ -35,8 +36,8 @@ export function AuthStatus() {
   }>({ browser: false, server: false })
 
   useEffect(() => {
-    setAuth('user', !!session?.user)
-  }, [session, setAuth])
+    setAuth('user', !!nextAuthSession?.user)
+  }, [nextAuthSession, setAuth])
 
   const handleClick = async (type: 'disclaimer' | 'api' | 'user' | 'database') => {
     switch (type) {
@@ -47,7 +48,7 @@ export function AuthStatus() {
         if (api) {
           window.dispatchEvent(new CustomEvent('showApiConsent'))
         } else {
-          await requestApiAuth()
+          window.dispatchEvent(new CustomEvent('showApiConsent'))
         }
         break
       case 'user':
@@ -127,7 +128,26 @@ export function AuthStatus() {
   const formatTimeDiff = (diff: number) => {
     return diff > 1000 
       ? `${(diff / 1000).toFixed(2)}s`
-      : `${diff}ms`
+      : `${Math.round(diff)}ms`
+  }
+
+  const getUserDescription = () => {
+    if (!user) return '点击登录'
+    
+    const userName = nextAuthSession?.user?.name
+    // 检查是否是 Linux.do 用户
+    const isLinuxDoUser = nextAuthSession?.user?.linuxdoId
+
+    if (!isLinuxDoUser) {
+      return `已登录: ${userName}`
+    }
+
+    return `已登录: ${userName} (${
+      syncStatus === 'synced' ? '已同步' : 
+      syncStatus === 'syncing' ? '同步中' : 
+      syncStatus === 'error' ? '同步失败' :
+      '未同步'
+    })`
   }
 
   const statuses: StatusItem[] = [
@@ -149,9 +169,10 @@ export function AuthStatus() {
       key: 'user',
       icon: IconUser,
       label: '',
-      description: user ? `已登录: ${session?.user?.name}` : '点击登录',
+      description: getUserDescription(),
       agreed: user,
-      menu: user
+      menu: user,
+      syncStatus: nextAuthSession?.user?.linuxdoId ? syncStatus : undefined
     },
     {
       key: 'database',
@@ -204,6 +225,18 @@ function StatusIcon({ status, onClick }: {
       if (dbStatus === '数据库连接正常') return 'var(--mantine-color-green-6)'
       if (dbStatus === '仅浏览器连接正常' || dbStatus === '仅服务器连接正常') return 'var(--mantine-color-yellow-6)'
       return 'var(--mantine-color-gray-6)'
+    }
+    if (status.key === 'user' && status.agreed && status.syncStatus) {
+      switch(status.syncStatus) {
+        case 'synced':
+          return 'var(--mantine-color-green-6)'
+        case 'syncing':
+          return 'var(--mantine-color-yellow-6)'
+        case 'error':
+          return 'var(--mantine-color-red-6)'
+        default:
+          return 'var(--mantine-color-gray-6)'
+      }
     }
     return 'var(--mantine-color-gray-6)'
   }

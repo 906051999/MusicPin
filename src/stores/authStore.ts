@@ -11,6 +11,9 @@ interface AuthState {
   requestApiAuth: () => Promise<boolean>
   setSession: (session: any) => void
   init: () => Promise<void>
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error'
+  setSyncStatus: (status: 'idle' | 'syncing' | 'synced' | 'error') => void
+  resetSyncStatus: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -47,10 +50,24 @@ export const useAuthStore = create<AuthState>()(
         supabase.auth.onAuthStateChange((_event, session) => {
           set({ session, user: !!session })
         })
-      }
+      },
+      syncStatus: 'idle',
+      setSyncStatus: (status) => set({ syncStatus: status }),
+      resetSyncStatus: () => {
+        const currentStatus = get().syncStatus
+        if (currentStatus === 'syncing') {
+          set({ syncStatus: 'error' })
+        }
+      },
     }),
     {
       name: 'auth-storage',
+      partialize: (state) => ({
+        disclaimer: state.disclaimer,
+        api: state.api,
+        user: state.user,
+        syncStatus: state.syncStatus
+      })
     }
   )
 )
