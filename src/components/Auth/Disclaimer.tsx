@@ -90,10 +90,10 @@ export function Disclaimer({ opened: externalOpened, onClose }: DisclaimerProps)
         <Container size="md" py="xl">
           <Stack gap="md">
             {[
-              "音乐海（MusicPin，以下简称本站）仅供音乐爱好者交流分享使用，本站不提供音乐存储、下载或商业服务。",
-              "本站不对分享内容的来源、合法性、准确性负责，所有内容版权归原作者所有。",
-              "点击同意即表示您已理解并接受：本站仅供个人学习研究使用，在使用过程中引发的任何问题，本站不承担任何责任。",
-              "如不认同以上声明，本站暂不提供服务。",
+              "音乐海仅供音乐爱好者交流分享，不提供音乐存储、下载或商业服务。",
+              "港务人员不对分享内容的来源、合法性、准确性负责，所有内容版权归原作者所有。",
+              "扬帆启航即表示您已理解并接受：这里仅供技术研究，因使用本站引发的法律纠纷，港务人员不承担任何责任。",
+              "如不认同以上约定，请即刻离港。",
               "请支持正版音乐创作，尊重知识产权。"
             ].map((text, index) => (
               <Text
@@ -138,7 +138,7 @@ export function Disclaimer({ opened: externalOpened, onClose }: DisclaimerProps)
                   variant="light"
                   color="yellow"
                 >
-                  我想离开
+                  我想离港
                 </Button>
                 <Button
                   onClick={onClose}
@@ -159,7 +159,7 @@ export function Disclaimer({ opened: externalOpened, onClose }: DisclaimerProps)
                   variant="light"
                   color="red"
                 >
-                  不同意
+                  确认离港
                 </Button>
                 <Button
                   onClick={handleAgree}
@@ -169,7 +169,7 @@ export function Disclaimer({ opened: externalOpened, onClose }: DisclaimerProps)
                   variant="light"
                   color="blue"
                 >
-                  同意 {countdown > 0 && !isManualShow ? `(${countdown})` : ''}
+                  启航 {countdown > 0 && !isManualShow ? `(${countdown})` : ''}
                 </Button>
               </>
             )}

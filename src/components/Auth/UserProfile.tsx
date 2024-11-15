@@ -2,7 +2,7 @@
 
 import { Modal, Stack, Text, Avatar, Group, Button } from '@mantine/core'
 import { useAuthStore } from '@/stores/authStore'
-import { IconMail, IconBrandGithub, IconLogout, IconId, IconUser, IconUserCircle, IconShield, IconCircleCheck, IconCircleX, IconSpy, IconCheck, IconAlertCircle, IconCloudOff } from '@tabler/icons-react'
+import { IconMail, IconBrandGithub, IconLogout, IconId, IconUser, IconUserCircle, IconShield, IconCircleCheck, IconCircleX } from '@tabler/icons-react'
 import { supabase } from '@/lib/supabase'
 import { notifications } from '@mantine/notifications'
 import { useSession, signOut } from 'next-auth/react'
@@ -37,7 +37,7 @@ const AUTH_PROVIDERS = {
 } as const
 
 export function UserProfile({ opened, onClose }: UserProfileProps) {
-  const { session, syncStatus, setSyncStatus } = useAuthStore()
+  const { session } = useAuthStore()
   const { data: nextAuthSession } = useSession()
   
   const rawUser = session?.user || nextAuthSession?.user
@@ -65,72 +65,6 @@ export function UserProfile({ opened, onClose }: UserProfileProps) {
     onClose()
   }
 
-  const handleSync = async () => {
-    if (!userData?.app_metadata?.provider?.includes('linuxdo')) {
-      notifications.show({
-        title: '无需同步',
-        message: '只有 Linux.do 用户需要同步信息',
-        color: 'blue'
-      })
-      return
-    }
-
-    setSyncStatus('syncing')
-    
-    const timeoutId = setTimeout(() => {
-      setSyncStatus('error')
-      notifications.show({
-        title: '同步超时',
-        message: '同步操作超时，请重试',
-        color: 'red'
-      })
-    }, 10000) // 10秒超时
-
-    try {
-      const response = await fetch('/api/auth/sync', {
-        method: 'POST',
-      })
-      
-      clearTimeout(timeoutId)
-      
-      if (!response.ok) throw new Error('Sync failed')
-      
-      const data = await response.json()
-      if (!data.success) {
-        throw new Error(data.error || 'Sync failed')
-      }
-      
-      setSyncStatus('synced')
-      notifications.show({
-        title: '同步成功',
-        message: '用户信息已更新',
-        color: 'green'
-      })
-    } catch (error) {
-      clearTimeout(timeoutId)
-      console.error('Sync error:', error)
-      setSyncStatus('error')
-      notifications.show({
-        title: '同步失败',
-        message: error instanceof Error ? error.message : '请稍后重试',
-        color: 'red'
-      })
-    }
-  }
-
-  const getSyncStatusIcon = () => {
-    switch(syncStatus) {
-      case 'syncing':
-        return <IconSpy size={14} className="animate-spin" />
-      case 'synced':
-        return <IconCheck size={14} />
-      case 'error':
-        return <IconAlertCircle size={14} />
-      default:
-        return <IconCloudOff size={14} />
-    }
-  }
-
   return (
     <Modal opened={opened} onClose={onClose} title="用户资料" size="sm">
       <Stack>
@@ -142,12 +76,14 @@ export function UserProfile({ opened, onClose }: UserProfileProps) {
           />
         </Group>
 
-        <Group justify="center">
-          <IconBrandGithub size={16} />
-          <Text size="sm" c="dimmed">
-            通过{userData?.user_metadata?.provider === 'github' ? 'GitHub' : 'Linux.do'}认证
-          </Text>
-        </Group>
+        {authProvider && AUTH_PROVIDERS[authProvider] && (
+          <Group justify="center">
+            <AuthProviderIcon size={16} />
+            <Text size="sm" c="dimmed">
+              通过{AUTH_PROVIDERS[authProvider].label}认证
+            </Text>
+          </Group>
+        )}
         
         <Stack gap="xs">
           {userData?.user_metadata?.username && (
@@ -167,12 +103,7 @@ export function UserProfile({ opened, onClose }: UserProfileProps) {
           {userData?.email && (
             <Group>
               <IconMail size={16} />
-              <Text size="sm">
-                邮箱: {userData.email}
-                {userData.user_metadata.email_verified && (
-                  <IconCircleCheck size={14} style={{ marginLeft: 4 }} color="green" />
-                )}
-              </Text>
+              <Text size="sm">邮箱: {userData.email}</Text>
             </Group>
           )}
 
@@ -200,29 +131,15 @@ export function UserProfile({ opened, onClose }: UserProfileProps) {
           )}
         </Stack>
 
-        <Group justify="space-between" mt="md">
-          <Button 
-            variant="light" 
-            color="red" 
-            leftSection={<IconLogout size={14} />}
-            onClick={handleLogout}
-          >
-            登出
-          </Button>
-          
-          {userData?.user_metadata?.provider === 'linuxdo' && (
-            <Button
-              variant="light"
-              color="blue"
-              leftSection={getSyncStatusIcon()}
-              onClick={handleSync}
-              loading={syncStatus === 'syncing'}
-              disabled={syncStatus === 'synced'}
-            >
-              {syncStatus === 'synced' ? '已同步' : syncStatus === 'syncing' ? '同步中' : '同步信息'}
-            </Button>
-          )}
-        </Group>
+        <Button 
+          variant="light" 
+          color="red" 
+          leftSection={<IconLogout size={14} />}
+          onClick={handleLogout}
+          mt="md"
+        >
+          登出
+        </Button>
       </Stack>
     </Modal>
   )

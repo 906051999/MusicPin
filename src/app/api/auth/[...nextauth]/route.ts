@@ -2,7 +2,7 @@ import NextAuth from 'next-auth'
 import type { AuthOptions } from 'next-auth'
 
 export const authOptions: AuthOptions = {
-  debug: false,
+  debug: true,
   providers: [
     {
       id: 'linuxdo',
@@ -16,7 +16,13 @@ export const authOptions: AuthOptions = {
       },
       token: {
         url: 'https://connect.linux.do/oauth2/token',
-        async request({ params, provider }) {
+        async request({ client, params, checks, provider }) {
+          console.log('Token exchange starting with params:', {
+            code: params.code,
+            redirect_uri: provider.callbackUrl,
+            clientId: provider.clientId
+          })
+          
           try {
             const response = await fetch('https://connect.linux.do/oauth2/token', {
               method: 'POST',
@@ -33,10 +39,19 @@ export const authOptions: AuthOptions = {
             })
             
             if (!response.ok) {
-              throw new Error(`Token exchange failed: ${await response.text()}`)
+              const error = await response.text()
+              console.error('Token exchange failed:', {
+                status: response.status,
+                error
+              })
+              throw new Error(`Token exchange failed: ${error}`)
             }
 
-            const tokens = await response.json()            
+            const tokens = await response.json()
+            console.log('Token exchange successful:', {
+              hasAccessToken: !!tokens.access_token
+            })
+            
             return { tokens }
           } catch (error) {
             console.error('Token exchange error:', error)
@@ -47,20 +62,37 @@ export const authOptions: AuthOptions = {
       userinfo: {
         url: 'https://connect.linux.do/api/user',
         async request({ tokens, provider }) {
-          const response = await fetch(provider.userinfo.url, {
-            headers: {
-              Authorization: `Bearer ${tokens.access_token}`,
-            },
-          })
+          console.log('Requesting user info with token')
+          try {
+            const response = await fetch(provider.userinfo.url, {
+              headers: {
+                Authorization: `Bearer ${tokens.access_token}`,
+              },
+            })
             
-          if (!response.ok) {
-            throw new Error(`Userinfo request failed: ${await response.text()}`)
-          }
+            if (!response.ok) {
+              const error = await response.text()
+              console.error('Userinfo request failed:', {
+                status: response.status,
+                error
+              })
+              throw new Error(`Userinfo request failed: ${error}`)
+            }
 
-          return response.json()
+            const profile = await response.json()
+            console.log('User info received:', {
+              hasId: !!profile.id,
+              hasEmail: !!profile.email
+            })
+            return profile
+          } catch (error) {
+            console.error('Userinfo request error:', error)
+            throw error
+          }
         }
       },
       profile(profile) {
+        console.log('Raw profile from Linux.do:', profile)
         return {
           id: profile.id.toString(),
           name: profile.name || profile.username,
@@ -77,30 +109,6 @@ export const authOptions: AuthOptions = {
     }
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
-      console.log('SignIn callback triggered:', { 
-        userId: user.id,
-        provider: account?.provider,
-        profile: profile
-      })
-
-      if (account?.provider === 'linuxdo') {
-        const userData = {
-          id: user.id,
-          email: user.email!,
-          name: user.name!,
-          username: profile.username || profile.login,
-          image: user.image!,
-          trust_level: profile.trust_level,
-          active: profile.active,
-          silenced: profile.silenced,
-          api_key: profile.api_key
-        }
-        
-        return true
-      }
-      return true
-    },
     async jwt({ token, account, profile }: any) {
       if (account && profile) {
         return {
@@ -136,11 +144,32 @@ export const authOptions: AuthOptions = {
         },
         accessToken: token.accessToken
       }
+    },
+    async signIn({ user, account, profile }) {
+      console.log('SignIn callback:', {
+        hasUser: !!user,
+        hasAccount: !!account,
+        hasProfile: !!profile
+      })
+      try {
+        if (account?.provider === 'linuxdo') {
+          return true
+        }
+        return true
+      } catch (error) {
+        console.error('Sign in error:', error)
+        return false
+      }
     }
   },
   pages: {
     signIn: '/',
     error: '/'
+  },
+  events: {
+    async error(error) {
+      console.error('Auth error:', error)
+    }
   }
 }
 
