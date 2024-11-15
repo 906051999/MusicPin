@@ -50,19 +50,29 @@ export function UserProfile({ opened, onClose }: UserProfileProps) {
   const AuthProviderIcon = authProvider ? AUTH_PROVIDERS[authProvider]?.icon : null
 
   const handleLogout = async () => {
-    if (session) {
-      await supabase.auth.signOut()
-    } else if (nextAuthSession) {
-      await signOut()
+    try {
+      if (session) {
+        const { error } = await supabase.auth.signOut()
+        if (error) throw error
+      } else if (nextAuthSession) {
+        await signOut()
+      }
+      
+      notifications.show({
+        title: '已登出',
+        message: '期待您的下次登录',
+        color: 'blue',
+        autoClose: 1000
+      })
+      onClose()
+    } catch (error) {
+      notifications.show({
+        title: '登出失败',
+        message: error instanceof Error ? error.message : '未知错误',
+        color: 'red',
+        autoClose: 3000
+      })
     }
-    
-    notifications.show({
-      title: '已登出',
-      message: '期待您的下次登录',
-      color: 'blue',
-      autoClose: 1000
-    })
-    onClose()
   }
 
   return (
@@ -103,7 +113,19 @@ export function UserProfile({ opened, onClose }: UserProfileProps) {
           {userData?.email && (
             <Group>
               <IconMail size={16} />
-              <Text size="sm">邮箱: {userData.email}</Text>
+              <Text size="sm">
+                邮箱: {userData.email}
+                {userData.user_metadata?.email_verified && (
+                  <IconCircleCheck size={14} color="green" style={{ marginLeft: 4 }} />
+                )}
+              </Text>
+            </Group>
+          )}
+
+          {userData?.user_metadata?.provider_id && (
+            <Group>
+              <IconBrandGithub size={16} />
+              <Text size="sm">GitHub ID: {userData.user_metadata.provider_id}</Text>
             </Group>
           )}
 
@@ -111,7 +133,9 @@ export function UserProfile({ opened, onClose }: UserProfileProps) {
             <Group>
               <IconShield size={16} />
               <Text size="sm">
-                信任等级: Lv.{userData.user_metadata.trust_level} - {TRUST_LEVELS[userData.user_metadata.trust_level as keyof typeof TRUST_LEVELS]}
+                信任等级: Lv.{userData.user_metadata.trust_level} - {
+                  TRUST_LEVELS[userData.user_metadata.trust_level as keyof typeof TRUST_LEVELS]
+                }
               </Text>
             </Group>
           )}

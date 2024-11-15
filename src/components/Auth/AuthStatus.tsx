@@ -15,6 +15,7 @@ import { UserProfile } from './UserProfile'
 import { useSession } from 'next-auth/react'
 import { supabase } from '@/lib/supabase'
 import { notifications } from '@mantine/notifications'
+import ms from 'ms'
 
 type StatusItem = {
   key: 'disclaimer' | 'api' | 'user' | 'database'
@@ -47,7 +48,7 @@ export function AuthStatus() {
         if (api) {
           window.dispatchEvent(new CustomEvent('showApiConsent'))
         } else {
-          await requestApiAuth()
+          window.dispatchEvent(new CustomEvent('showApiConsent'))
         }
         break
       case 'user':
@@ -78,8 +79,8 @@ export function AuthStatus() {
       notifications.show({
         title: '浏览器 -> Supabase',
         message: [
-          `RPC延迟: ${clientLatency}ms`,
-          `时差: ${formatTimeDiff(clientTimeDiff)}`,
+          `RPC延迟: ${ms(clientLatency)}`,
+          `时差: ${ms(clientTimeDiff)}`,
         ].join('\n'),
         color: 'green',
         style: { whiteSpace: 'pre-line' },
@@ -104,9 +105,9 @@ export function AuthStatus() {
       notifications.show({
         title: '服务器 -> Supabase',
         message: [
-          `直接访问延迟: ${result.serverMetrics.directLatency}ms`,
-          `RPC延迟: ${result.serverMetrics.rpcLatency}ms`,
-          `时差: ${formatTimeDiff(serverTimeDiff)}`,
+          `直接访问延迟: ${ms(result.serverMetrics.directLatency)}`,
+          `RPC延迟: ${ms(result.serverMetrics.rpcLatency)}`,
+          `时差: ${ms(serverTimeDiff)}`,
         ].join('\n'),
         color: 'green',
         style: { whiteSpace: 'pre-line' },
@@ -124,11 +125,6 @@ export function AuthStatus() {
     }
   }
 
-  const formatTimeDiff = (diff: number) => {
-    return diff > 1000 
-      ? `${(diff / 1000).toFixed(2)}s`
-      : `${diff}ms`
-  }
 
   const statuses: StatusItem[] = [
     {
@@ -149,7 +145,13 @@ export function AuthStatus() {
       key: 'user',
       icon: IconUser,
       label: '',
-      description: user ? `已登录: ${session?.user?.name}` : '点击登录',
+      description: user 
+        ? `已登录: ${
+          session?.user?.app_metadata?.provider === 'github'
+            ? session?.user?.user_metadata?.user_name || session?.user?.user_metadata?.preferred_username
+            : session?.user?.username || session?.user?.name
+      }` 
+        : '点击登录',
       agreed: user,
       menu: user
     },

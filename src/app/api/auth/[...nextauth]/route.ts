@@ -2,7 +2,7 @@ import NextAuth from 'next-auth'
 import type { AuthOptions } from 'next-auth'
 
 export const authOptions: AuthOptions = {
-  debug: true,
+  debug: false,
   providers: [
     {
       id: 'linuxdo',

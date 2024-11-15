@@ -1,6 +1,6 @@
 'use client'
 
-import { Modal, Stack, Button } from '@mantine/core'
+import { Modal, Stack, Button, Text, Divider } from '@mantine/core'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { supabase } from '@/lib/supabase'
@@ -64,18 +64,27 @@ export function UserAuth({ onClose }: UserAuthProps) {
       <Modal
         opened={true}
         onClose={onClose}
-        title="认证"
+        title="登录 MusicPin"
         size="sm"
+        centered
       >
+        <Stack gap="md">
           <Button
             onClick={handleLinuxDoLogin}
             variant="outline"
             fullWidth
-            leftSection={<IconId size={16} />}
+            leftSection={<IconId size={16} color="#FFB003" />}
+            h={45}
+            color="#FFB003"
           >
             使用 Linux.do 登录
           </Button>
-        <Stack>
+
+          <Divider
+            label={<Text size="sm" c="dimmed">或者</Text>}
+            labelPosition="center"
+          />
+
           <Auth
             supabaseClient={supabase}
             appearance={{ 
@@ -86,12 +95,35 @@ export function UserAuth({ onClose }: UserAuthProps) {
                     brand: '#000000',
                     brandAccent: '#333333',
                   },
+                  radii: {
+                    borderRadiusButton: '4px',
+                  },
+                },
+              },
+              style: {
+                button: {
+                  height: '45px',
+                },
+                container: {
+                  gap: '0',
                 },
               },
             }}
-            localization={authLocalization}
+            localization={{
+              ...authLocalization,
+              variables: {
+                ...authLocalization.variables,
+                sign_in: {
+                  ...authLocalization.variables.sign_in,
+                  social_provider_text: '使用{{provider}}登录'
+                }
+              }
+            }}
             providers={['github']}
             view="sign_in"
+            showLinks={false}
+            magicLink={false}
+            onlyThirdPartyProviders={true}
           />
 
         </Stack>

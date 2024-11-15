@@ -59,12 +59,13 @@ export function AuthManager() {
     }
   }, [])
 
-  useEffect(() => {
-    if (isInitialCheck && !disclaimer) {
-      setShowDisclaimer(true)
-    }
-    setIsInitialCheck(false)
-  }, [])
+  // 默认显示免责声明，暂不启用
+  // useEffect(() => {
+  //   if (isInitialCheck && !disclaimer) {
+  //     setShowDisclaimer(true)
+  //   }
+  //   setIsInitialCheck(false)
+  // }, [])
 
   const handleApiConsent = (agreed: boolean) => {
     setShowApiConsent(false)
