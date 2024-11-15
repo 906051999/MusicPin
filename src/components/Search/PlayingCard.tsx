@@ -5,6 +5,8 @@ import { IconX } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import { PLATFORM_COLORS } from '@/lib/api/config'
 import type { SearchResult, SongDetail } from '@/lib/api/types'
+import { useApp } from '@/contexts/AppContext'
+import { useRef, useEffect } from 'react'
 
 interface PlayingCardProps {
   result: SearchResult
@@ -14,6 +16,20 @@ interface PlayingCardProps {
 }
 
 export function PlayingCard({ result, songData, onStop, onError }: PlayingCardProps) {
+  const { setAudioElement } = useApp()
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  useEffect(() => {
+    if (audioRef.current) {
+      setAudioElement(
+        audioRef.current,
+        songData.title || result.title,
+        songData.artist || result.artist
+      )
+    }
+    return () => setAudioElement(null)
+  }, [songData, result, setAudioElement])
+
   return (
     <Card withBorder shadow="sm">
       <Group align="flex-start">
@@ -44,6 +60,7 @@ export function PlayingCard({ result, songData, onStop, onError }: PlayingCardPr
         </Button>
       </Group>
       <audio
+        ref={audioRef}
         src={songData.audioUrl}
         controls
         autoPlay

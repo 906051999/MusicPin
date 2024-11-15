@@ -1,8 +1,9 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import type { SearchResult } from '@/lib/api/types'
 import { useAuthStore } from '@/stores/authStore'
+import { useMediaSession } from '@/lib/hooks/useMediaSession'
 
 interface AppContextType {
   keyword: string
@@ -19,6 +20,7 @@ interface AppContextType {
   setLayout: (value: 'ocean' | 'search') => void
   clearSearch: () => void
   handleBubbleSearch: (song: string, artist: string) => void
+  setAudioElement: (audio: HTMLAudioElement | null, title?: string, artist?: string) => void
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -30,6 +32,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [shouldSearch, setShouldSearch] = useState(false)
   const [layout, setLayout] = useState<'ocean' | 'search'>('ocean')
   const { requestApiAuth } = useAuthStore()
+  const [currentSongData, setCurrentSongData] = useState<{
+    title: string;
+    artist: string;
+    audioElement: HTMLAudioElement | null;
+  }>({
+    title: '',
+    artist: '',
+    audioElement: null
+  })
+
+  useMediaSession(currentSongData)
 
   const clearSearch = () => {
     setSearchText('')
@@ -60,11 +73,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const handlePlay = (result: SearchResult) => {
-    setSelectedSong(prev => 
-      prev === result.shortRequestUrl ? '' : result.shortRequestUrl
-    )
-  }
+  const handlePlay = useCallback((result: SearchResult) => {
+    setSelectedSong(prev => {
+      const newValue = prev === result.shortRequestUrl ? '' : result.shortRequestUrl
+      if (!newValue) {
+        setCurrentSongData(prev => ({ ...prev, audioElement: null }))
+      }
+      return newValue
+    })
+  }, [])
+
+  const setAudioElement = useCallback((audio: HTMLAudioElement | null, title?: string, artist?: string) => {
+    setCurrentSongData({
+      title: title || '',
+      artist: artist || '',
+      audioElement: audio
+    })
+  }, [])
 
   return (
     <AppContext.Provider value={{
@@ -82,6 +107,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       layout,
       setLayout,
       clearSearch,
+      setAudioElement,
     }}>
       {children}
     </AppContext.Provider>
