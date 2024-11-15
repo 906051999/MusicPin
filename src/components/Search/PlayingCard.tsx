@@ -24,7 +24,8 @@ export function PlayingCard({ result, songData, onStop, onError }: PlayingCardPr
       setAudioElement(
         audioRef.current,
         songData.title || result.title,
-        songData.artist || result.artist
+        songData.artist || result.artist,
+        songData.cover || result.cover
       )
     }
     return () => setAudioElement(null)
@@ -33,6 +34,18 @@ export function PlayingCard({ result, songData, onStop, onError }: PlayingCardPr
   return (
     <Card withBorder shadow="sm">
       <Group align="flex-start">
+        {(songData.cover || result.cover) && (
+          <img 
+            src={songData.cover || result.cover || ''} 
+            alt="cover"
+            style={{ 
+              width: '48px',
+              height: '48px',
+              objectFit: 'cover',
+              borderRadius: '4px'
+            }}
+          />
+        )}
         <div 
           style={{ 
             width: '4px',

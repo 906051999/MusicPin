@@ -20,7 +20,7 @@ interface AppContextType {
   setLayout: (value: 'ocean' | 'search') => void
   clearSearch: () => void
   handleBubbleSearch: (song: string, artist: string) => void
-  setAudioElement: (audio: HTMLAudioElement | null, title?: string, artist?: string) => void
+  setAudioElement: (audio: HTMLAudioElement | null, title?: string, artist?: string, cover?: string | null) => void
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -33,13 +33,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [layout, setLayout] = useState<'ocean' | 'search'>('ocean')
   const { requestApiAuth } = useAuthStore()
   const [currentSongData, setCurrentSongData] = useState<{
-    title: string;
-    artist: string;
-    audioElement: HTMLAudioElement | null;
+    title: string
+    artist: string
+    audioElement: HTMLAudioElement | null
+    cover?: string | null
   }>({
     title: '',
     artist: '',
-    audioElement: null
+    audioElement: null,
+    cover: null
   })
 
   useMediaSession(currentSongData)
@@ -83,11 +85,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const setAudioElement = useCallback((audio: HTMLAudioElement | null, title?: string, artist?: string) => {
+  const setAudioElement = useCallback((
+    audio: HTMLAudioElement | null, 
+    title?: string, 
+    artist?: string,
+    cover?: string | null
+  ) => {
     setCurrentSongData({
       title: title || '',
       artist: artist || '',
-      audioElement: audio
+      audioElement: audio,
+      cover
     })
   }, [])
 

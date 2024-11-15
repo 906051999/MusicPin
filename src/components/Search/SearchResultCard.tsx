@@ -14,6 +14,18 @@ export function SearchResultCard({ result, isPlaying, onPlay }: SearchResultCard
   return (
     <Card withBorder shadow="sm">
       <Group align="flex-start">
+        {result.cover && (
+          <img 
+            src={result.cover} 
+            alt="cover"
+            style={{ 
+              width: '48px',
+              height: '48px',
+              objectFit: 'cover',
+              borderRadius: '4px'
+            }}
+          />
+        )}
         <div 
           style={{ 
             width: '4px',

@@ -4,6 +4,7 @@ interface MediaSessionData {
   title: string
   artist: string
   audioElement: HTMLAudioElement | null
+  cover?: string | null
 }
 
 export function useMediaSession(data: MediaSessionData) {
@@ -12,7 +13,15 @@ export function useMediaSession(data: MediaSessionData) {
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: data.title,
-      artist: data.artist
+      artist: data.artist,
+      artwork: data.cover ? [
+        { src: data.cover, sizes: '96x96', type: 'image/jpeg' },
+        { src: data.cover, sizes: '128x128', type: 'image/jpeg' },
+        { src: data.cover, sizes: '192x192', type: 'image/jpeg' },
+        { src: data.cover, sizes: '256x256', type: 'image/jpeg' },
+        { src: data.cover, sizes: '384x384', type: 'image/jpeg' },
+        { src: data.cover, sizes: '512x512', type: 'image/jpeg' }
+      ] : []
     })
 
     navigator.mediaSession.setActionHandler('play', () => data.audioElement?.play())
