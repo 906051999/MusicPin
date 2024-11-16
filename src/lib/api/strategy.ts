@@ -13,7 +13,7 @@ type FuseExpression = {
 
 export class RequestStrategy {
   // 简化搜索结果验证
-  private validateSearchResult(result: SearchResponse, keyword: string): boolean {
+  private validateSearchResult(result: SearchResponse, song: string, artist: string): boolean {
     const data = result.data?.[0]
     if (!data?.title || !data?.artist || !data?.shortRequestUrl) return false
     
@@ -22,12 +22,13 @@ export class RequestStrategy {
         .toLowerCase()
         .replace(/\([^)]*\)/g, '')
         .replace(/（[^）]*）/g, '')
-        .replace(/[,，、]/g, ' ')  // 将常见分隔符转为空格
-        .replace(/\s+/g, ' ')     // 合并多个空格
+        .replace(/[,，、]/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim()
     }
 
-    const searchText = cleanText(keyword)
+    const searchSong = cleanText(song)
+    const searchArtist = cleanText(artist)
     const titleText = cleanText(data.title)
     const artistText = cleanText(data.artist)
 
@@ -35,63 +36,31 @@ export class RequestStrategy {
     const searchItem = { title: titleText, artist: artistText }
     const fuseOptions = {
       keys: ['title', 'artist'],
-      threshold: 0.45,    // 稍微放宽阈值
+      threshold: 0.45,
       ignoreLocation: true,
       useExtendedSearch: true
     }
     const fuse = new Fuse([searchItem], fuseOptions)
 
-    // 1. 尝试精确匹配
-    if (searchText === titleText || searchText === artistText) {
-      return true
+    // 如果有歌名和歌手，都需要匹配
+    if (searchSong && searchArtist) {
+      return (
+        (titleText.includes(searchSong) && artistText.includes(searchArtist)) ||
+        (fuse.search({ $and: [{ title: searchSong }, { artist: searchArtist }] }).length > 0)
+      )
     }
 
-    // 2. 尝试智能分割歌名和歌手
-    const parts = searchText.split(' ')
-    if (parts.length >= 2) {
-      // 尝试不同的分割点
-      for (let i = 1; i < parts.length; i++) {
-        const possibleTitle = parts.slice(0, i).join(' ')
-        const possibleArtist = parts.slice(i).join(' ')
-        
-        // 正向匹配: 歌名 歌手
-        if (possibleTitle === titleText && possibleArtist === artistText) {
-          return true
-        }
-        // 反向匹配: 歌手 歌名
-        if (possibleTitle === artistText && possibleArtist === titleText) {
-          return true
-        }
-
-        // 模糊匹配两种格式
-        const patterns: FuseExpression[] = [
-          { $and: [{ title: `=${possibleTitle}` }, { artist: `=${possibleArtist}` }] },
-          { $and: [{ artist: `=${possibleTitle}` }, { title: `=${possibleArtist}` }] }
-        ];
-
-        for (const pattern of patterns) {
-          const fuseResult = fuse.search(pattern)
-          if (fuseResult.length > 0 && fuseResult[0].score && fuseResult[0].score < 0.4) {
-            return true
-          }
-        }
-      }
+    // 只有歌名
+    if (searchSong) {
+      return titleText.includes(searchSong) || fuse.search({ title: searchSong }).length > 0
     }
 
-    // 3. 对整个搜索词进行模糊匹配
-    const fuseResult = fuse.search(searchText)
-    if (fuseResult.length > 0 && fuseResult[0].score && fuseResult[0].score < 0.35) {
-      return true
+    // 只有歌手
+    if (searchArtist) {
+      return artistText.includes(searchArtist) || fuse.search({ artist: searchArtist }).length > 0
     }
 
-    // 4. 分别对歌名和歌手进行模糊匹配
-    const titleResult = fuse.search({ title: searchText })
-    const artistResult = fuse.search({ artist: searchText })
-    
-    return (
-      (titleResult.length > 0 && titleResult[0].score !== undefined && titleResult[0].score < 0.3) ||
-      (artistResult.length > 0 && artistResult[0].score !== undefined && artistResult[0].score < 0.3)
-    );
+    return false
   }
 
   // 简化歌曲详情验证
@@ -101,12 +70,13 @@ export class RequestStrategy {
 
   // 测试单个接口
   private async testInterface(
-    keyword: string,
+    song: string,
+    artist: string,
     platform: Platform,
     source: APISource
   ): Promise<{ result: SearchResponse | null; fallback: SearchResponse | null }> {
     try {
-      const result = await apiManager.search(keyword, platform, source)
+      const result = await apiManager.search(song, artist, platform, source)
       
       // 如果有数据，先保存为兜底结果
       let fallback: SearchResponse | null = null
@@ -118,7 +88,7 @@ export class RequestStrategy {
       }
 
       // 尝试验证匹配度
-      if (this.validateSearchResult(result, keyword)) {
+      if (this.validateSearchResult(result, song, artist)) {
         const firstSong = result.data?.[0]
         if (firstSong?.shortRequestUrl) {
           const detail = await apiManager.getSongDetail(firstSong.shortRequestUrl, platform, source)
@@ -135,7 +105,7 @@ export class RequestStrategy {
   }
 
   // 智能搜索实现
-  async smartSearch(keyword: string): Promise<SearchResponse> {
+  async smartSearch(song: string, artist: string): Promise<SearchResponse> {
     const interfaces = this.getAvailableInterfaces()
     if (interfaces.length === 0) {
       throw new Error('没有可用的数据源')
@@ -145,7 +115,7 @@ export class RequestStrategy {
 
     // 依次测试每个接口
     for (const { platform, source } of interfaces) {
-      const { result, fallback } = await this.testInterface(keyword, platform, source)
+      const { result, fallback } = await this.testInterface(song, artist, platform, source)
       if (result) {
         return result
       }

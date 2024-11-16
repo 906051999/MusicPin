@@ -12,8 +12,8 @@ import { SearchResultCard } from './SearchResultCard'
 import { useEffect } from 'react'
 
 export function SearchResults() {
-  const { searchText, shouldSearch, selectedSong, setSelectedSong, handlePlay } = useApp()
-  const { data: searchData, isLoading, error, refetch } = useSearch(searchText, shouldSearch)
+  const { song, artist, shouldSearch, selectedSong, setSelectedSong, handlePlay } = useApp()
+  const { data: searchData, isLoading, error, refetch } = useSearch(song, artist, shouldSearch)
   const { data: songData, error: songDetailError } = useSongDetail(selectedSong)
 
   // 监听歌曲详情错误
@@ -58,7 +58,7 @@ export function SearchResults() {
             </Button>
           </Group>
         </Card>
-      ) : searchText && searchData?.data?.length === 0 ? (
+      ) : (song || artist) && searchData?.data?.length === 0 ? (
         <Text ta="center" c="dimmed">未找到相关结果</Text>
       ) : null}
 

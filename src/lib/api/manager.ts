@@ -18,17 +18,31 @@ export class APIManager {
 
   // 单一API源和平台搜索
   async search(
-    keyword: string, 
-    platform: Platform, 
-    source: APISource, 
-    page = 1, 
+    song: string,
+    artist: string,
+    platform: Platform,
+    source: APISource,
+    page = 1,
     limit = 10
   ): Promise<SearchResponse> {
-    if (!keyword || !platform || !source) {
+    if (!platform || !source) {
       return { code: 200, data: [] }
     }
 
-    console.log('[APIManager] Starting search:', { keyword, platform, source })
+    const trimmedSong = song.trim()
+    const trimmedArtist = artist.trim()
+    if (!trimmedSong && !trimmedArtist) {
+      return { code: 200, data: [] }
+    }
+
+    const keyword = `${trimmedSong} ${trimmedArtist}`.trim()
+    console.log('[APIManager] Starting search:', { 
+      song: trimmedSong, 
+      artist: trimmedArtist, 
+      keyword,
+      platform, 
+      source 
+    })
     
     try {
       const api = this.apis[source]

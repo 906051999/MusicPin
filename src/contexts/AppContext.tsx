@@ -6,10 +6,10 @@ import { useAuthStore } from '@/stores/authStore'
 import { useMediaSession } from '@/lib/hooks/useMediaSession'
 
 interface AppContextType {
-  keyword: string
-  setKeyword: (value: string) => void
-  searchText: string
-  setSearchText: (value: string) => void
+  song: string
+  setSong: (value: string) => void
+  artist: string
+  setArtist: (value: string) => void
   selectedSong: string
   setSelectedSong: (value: string) => void
   shouldSearch: boolean
@@ -26,8 +26,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [keyword, setKeyword] = useState('')
-  const [searchText, setSearchText] = useState('')
+  const [song, setSong] = useState('')
+  const [artist, setArtist] = useState('')
   const [selectedSong, setSelectedSong] = useState('')
   const [shouldSearch, setShouldSearch] = useState(false)
   const [layout, setLayout] = useState<'ocean' | 'search'>('ocean')
@@ -47,17 +47,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useMediaSession(currentSongData)
 
   const clearSearch = () => {
-    setSearchText('')
+    setSong('')
+    setArtist('')
     setSelectedSong('')
     setShouldSearch(false)
   }
 
   const handleSearch = async () => {
-    const trimmedKeyword = keyword.trim()
-    if (trimmedKeyword) {
+    const trimmedSong = song.trim()
+    const trimmedArtist = artist.trim()
+    if (trimmedSong || trimmedArtist) {
       const apiAuthorized = await requestApiAuth()
       if (apiAuthorized) {
-        setSearchText(trimmedKeyword)
         setShouldSearch(true)
       }
     }
@@ -67,9 +68,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const apiAuthorized = await requestApiAuth()
     if (apiAuthorized) {
       clearSearch()
-      const newKeyword = `${song} ${artist}`
-      setKeyword(newKeyword)
-      setSearchText(newKeyword)
+      setSong(song)
+      setArtist(artist)
       setShouldSearch(true)
       setLayout('search')
     }
@@ -101,10 +101,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      keyword,
-      setKeyword,
-      searchText,
-      setSearchText,
+      song,
+      setSong,
+      artist,
+      setArtist,
       selectedSong,
       setSelectedSong,
       shouldSearch,

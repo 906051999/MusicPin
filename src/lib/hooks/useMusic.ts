@@ -2,12 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { requestStrategy } from '../api/strategy'
 import { notifications } from '@mantine/notifications';
 
-export function useSearch(keyword: string, shouldSearch: boolean) {
+export function useSearch(song: string, artist: string, shouldSearch: boolean) {
   return useQuery({
-    queryKey: ['smart-search', keyword],
+    queryKey: ['smart-search', song, artist],
     queryFn: async () => {
       try {
-        return await requestStrategy.smartSearch(keyword)
+        return await requestStrategy.smartSearch(song, artist)
       } catch (error) {
         notifications.show({
           title: '搜索失败',
@@ -17,7 +17,7 @@ export function useSearch(keyword: string, shouldSearch: boolean) {
         throw error
       }
     },
-    enabled: Boolean(keyword && shouldSearch),
+    enabled: Boolean((song || artist) && shouldSearch),
     refetchOnMount: false,
     staleTime: 0,
     retry: false,
