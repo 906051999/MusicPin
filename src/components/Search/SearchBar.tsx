@@ -6,7 +6,7 @@ import { useApp } from '@/contexts/AppContext'
 import { useViewportSize } from '@mantine/hooks'
 
 export function SearchBar() {
-  const { song, setSong, artist, setArtist, handleSearch, setShouldSearch } = useApp()
+  const { song, setSong, artist, setArtist, handleSearch } = useApp()
   const { width } = useViewportSize()
   const isMobile = width < 768 // md breakpoint
 
@@ -25,7 +25,6 @@ export function SearchBar() {
           value={song}
           onChange={(e) => {
             setSong(e.currentTarget.value)
-            setShouldSearch(false)
           }}
           onKeyPress={handleKeyPress}
           style={{ flex: 1 }}
@@ -37,7 +36,6 @@ export function SearchBar() {
                 onClick={(e) => {
                   e.stopPropagation()
                   setSong('')
-                  setShouldSearch(false)
                 }}
                 style={{ pointerEvents: 'auto' }}
               >
@@ -54,7 +52,6 @@ export function SearchBar() {
           value={artist}
           onChange={(e) => {
             setArtist(e.currentTarget.value)
-            setShouldSearch(false)
           }}
           onKeyPress={handleKeyPress}
           style={{ flex: 1 }}
@@ -66,7 +63,6 @@ export function SearchBar() {
                 onClick={(e) => {
                   e.stopPropagation()
                   setArtist('')
-                  setShouldSearch(false)
                 }}
                 style={{ pointerEvents: 'auto' }}
               >

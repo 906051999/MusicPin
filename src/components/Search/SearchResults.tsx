@@ -9,11 +9,11 @@ import { isSuccessCode } from '@/lib/api/config'
 import type { APISource } from '@/lib/api/config'
 import { PlayingCard } from './PlayingCard'
 import { SearchResultCard } from './SearchResultCard'
-import { useEffect } from 'react'
+import { useEffect, useCallback, useImperativeHandle } from 'react'
 
 export function SearchResults() {
-  const { song, artist, shouldSearch, selectedSong, setSelectedSong, handlePlay } = useApp()
-  const { data: searchData, isLoading, error, refetch } = useSearch(song, artist, shouldSearch)
+  const { searchParams, selectedSong, setSelectedSong, handlePlay } = useApp()
+  const { data: searchData, isLoading, error, refetch } = useSearch()
   const { data: songData, error: songDetailError } = useSongDetail(selectedSong)
 
   // 监听歌曲详情错误
@@ -58,8 +58,10 @@ export function SearchResults() {
             </Button>
           </Group>
         </Card>
-      ) : (song || artist) && searchData?.data?.length === 0 ? (
-        <Text ta="center" c="dimmed">未找到相关结果</Text>
+      ) : searchParams.song || searchParams.artist ? (
+        searchData?.data?.length === 0 ? (
+          <Text ta="center" c="dimmed">未找到相关结果</Text>
+        ) : null
       ) : null}
 
       {searchData?.data?.map((result) => (

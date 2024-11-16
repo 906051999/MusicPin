@@ -12,8 +12,6 @@ interface AppContextType {
   setArtist: (value: string) => void
   selectedSong: string
   setSelectedSong: (value: string) => void
-  shouldSearch: boolean
-  setShouldSearch: (value: boolean) => void
   handleSearch: () => void
   handlePlay: (result: SearchResult) => void
   layout: 'ocean' | 'search'
@@ -21,6 +19,12 @@ interface AppContextType {
   clearSearch: () => void
   handleBubbleSearch: (song: string, artist: string) => void
   setAudioElement: (audio: HTMLAudioElement | null, title?: string, artist?: string, cover?: string | null) => void
+  searchParams: {
+    song: string
+    artist: string
+  }
+  setSearchParams: (params: { song: string; artist: string }) => void
+  isSearching: boolean
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -29,7 +33,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [song, setSong] = useState('')
   const [artist, setArtist] = useState('')
   const [selectedSong, setSelectedSong] = useState('')
-  const [shouldSearch, setShouldSearch] = useState(false)
   const [layout, setLayout] = useState<'ocean' | 'search'>('ocean')
   const { requestApiAuth } = useAuthStore()
   const [currentSongData, setCurrentSongData] = useState<{
@@ -43,6 +46,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     audioElement: null,
     cover: null
   })
+  const [searchParams, setSearchParams] = useState({ song: '', artist: '' })
+  const [isSearching, setIsSearching] = useState(false)
 
   useMediaSession(currentSongData)
 
@@ -50,17 +55,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSong('')
     setArtist('')
     setSelectedSong('')
-    setShouldSearch(false)
+    setLayout('ocean')
+    setIsSearching(false)
+    setSearchParams({ song: '', artist: '' })
   }
 
   const handleSearch = async () => {
-    const trimmedSong = song.trim()
-    const trimmedArtist = artist.trim()
-    if (trimmedSong || trimmedArtist) {
-      const apiAuthorized = await requestApiAuth()
-      if (apiAuthorized) {
-        setShouldSearch(true)
-      }
+    const apiAuthorized = await requestApiAuth()
+    if (apiAuthorized) {
+      setLayout('search')
+      setIsSearching(true)
+      setSearchParams({ song, artist })
     }
   }
 
@@ -70,8 +75,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearSearch()
       setSong(song)
       setArtist(artist)
-      setShouldSearch(true)
       setLayout('search')
+      setIsSearching(true)
+      setSearchParams({ song, artist })
     }
   }
 
@@ -107,8 +113,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setArtist,
       selectedSong,
       setSelectedSong,
-      shouldSearch,
-      setShouldSearch,
       handleSearch,
       handleBubbleSearch,
       handlePlay,
@@ -116,6 +120,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLayout,
       clearSearch,
       setAudioElement,
+      searchParams,
+      setSearchParams,
+      isSearching,
     }}>
       {children}
     </AppContext.Provider>
