@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { requestStrategy } from '../api/strategy'
 import { notifications } from '@mantine/notifications';
 import { useApp } from '@/contexts/AppContext'
+import { useCallback } from 'react'
 
 export function useSearch() {
   const { searchParams, isSearching } = useApp()
@@ -51,4 +52,17 @@ export function useSongDetail(shortRequestUrl: string) {
     gcTime: 0,
     networkMode: 'always'
   })
+}
+
+export function useComments() {
+  const queryClient = useQueryClient()
+
+  // 失效缓存的方法
+  const invalidateComments = useCallback(() => {
+    queryClient.invalidateQueries(['music-comments'])
+  }, [queryClient])
+
+  return {
+    invalidateComments
+  }
 }

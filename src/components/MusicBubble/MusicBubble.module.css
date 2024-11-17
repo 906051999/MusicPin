@@ -1,12 +1,34 @@
 .bubble {
+    transition: all 0.2s ease;
     cursor: pointer;
-    background: #fff;
-    border: 1px solid #eee;
-    transition: transform 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
   
   .focused {
     transform: scale(1.02);
-    border: 1px solid #000;
-    z-index: 2;
+    box-shadow: var(--mantine-shadow-md);
+  }
+  
+  .actionButton {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  
+  .actionButton:hover {
+    opacity: 1;
+  }
+  
+  /* 移动端样式优化 */
+  @media (max-width: 768px) {
+    .bubble {
+      font-size: 14px;
+    }
+    
+    /* 确保按钮足够大，易于点击 */
+    .actionButton {
+      min-width: 32px;
+      min-height: 32px;
+    }
   }
