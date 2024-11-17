@@ -9,8 +9,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const pageSize = Number(searchParams.get('pageSize')) || 10
   const pageNumber = Number(searchParams.get('pageNumber')) || 0
+  const type = searchParams.get('type')
 
   try {
+    if (type === 'songs') {
+      const { data, error } = await supabase.rpc('get_unique_songs')
+      if (error) throw error
+      return NextResponse.json(data)
+    }
+
     const { data, error } = await supabase.rpc('get_public_comments_with_count', {
       page_size: pageSize,
       page_number: pageNumber
