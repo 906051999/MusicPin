@@ -14,8 +14,8 @@ interface AppContextType {
   setSelectedSong: (value: string) => void
   handleSearch: () => void
   handlePlay: (result: SearchResult) => void
-  layout: 'ocean' | 'search'
-  setLayout: (value: 'ocean' | 'search') => void
+  layout: 'ocean' | 'search' | 'chat'
+  setLayout: (value: 'ocean' | 'search' | 'chat') => void
   clearSearch: () => void
   handleBubbleSearch: (song: string, artist: string) => void
   setAudioElement: (audio: HTMLAudioElement | null, title?: string, artist?: string, cover?: string | null) => void
@@ -33,7 +33,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [song, setSong] = useState('')
   const [artist, setArtist] = useState('')
   const [selectedSong, setSelectedSong] = useState('')
-  const [layout, setLayout] = useState<'ocean' | 'search'>('ocean')
+  const [layout, setLayout] = useState<'ocean' | 'search' | 'chat'>('ocean')
   const { requestApiAuth } = useAuthStore()
   const [currentSongData, setCurrentSongData] = useState<{
     title: string

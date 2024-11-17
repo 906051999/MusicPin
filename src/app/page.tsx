@@ -10,6 +10,7 @@ import { AuthManager } from '@/components/AuthManager'
 import { useAuthStore } from '@/stores/authStore'
 import { MusicOcean } from '@/components/MusicOcean/MusicOcean'
 import { NoAccess } from '@/components/Auth/NoAccess'
+import { ChatLayout } from '@/components/Chat/ChatLayout'
 
 function MainContent() {
   const { layout } = useApp()
@@ -49,11 +50,13 @@ function MainContent() {
       >
         {layout === 'ocean' ? (
           <MusicOcean />
-        ) : (
+        ) : layout === 'search' ? (
           <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
             <SearchBar />
             <SearchResults />
           </div>
+        ) : (
+          <ChatLayout />
         )}
       </Container>
     </div>

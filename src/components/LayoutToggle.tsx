@@ -1,8 +1,7 @@
 'use client'
 
 import { SegmentedControl, Box } from '@mantine/core'
-// 修改图标导入方式
-import { IconWash, IconSearch } from '@tabler/icons-react'
+import { IconWash, IconSearch, IconMessageCircle } from '@tabler/icons-react'
 import { useApp } from '@/contexts/AppContext'
 
 export function LayoutToggle() {
@@ -13,7 +12,7 @@ export function LayoutToggle() {
       <SegmentedControl
         value={layout}
         onChange={(value) => {
-          setLayout(value as 'ocean' | 'search')
+          setLayout(value as 'ocean' | 'search' | 'chat')
           setSelectedSong('')
         }}
         data={[
@@ -32,6 +31,15 @@ export function LayoutToggle() {
               <Box style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <IconSearch size={16} stroke={1.5} />
                 搜索
+              </Box>
+            ),
+          },
+          {
+            value: 'chat',
+            label: (
+              <Box style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <IconMessageCircle size={16} stroke={1.5} />
+                问东问西
               </Box>
             ),
           },

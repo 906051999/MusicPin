@@ -14,7 +14,13 @@ export async function GET(request: Request) {
   try {
     if (type === 'songs') {
       const { data, error } = await supabase.rpc('get_unique_songs')
+      
       if (error) throw error
+      
+      if (!data || !Array.isArray(data)) {
+        throw new Error('Invalid data format')
+      }
+
       return NextResponse.json(data)
     }
 
@@ -27,6 +33,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(data)
   } catch (error) {
+    console.error('API error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch comments' },
       { status: 500 }
