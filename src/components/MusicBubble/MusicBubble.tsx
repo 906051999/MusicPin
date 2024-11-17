@@ -25,6 +25,34 @@ interface MusicBubbleProps {
   created_at: string
 }
 
+const fetchWithTimeout = async (promise: Promise<any>, timeout: number) => {
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout')), timeout)
+  })
+  return Promise.race([promise, timeoutPromise])
+}
+
+const updateCounter = async (id: number, counterName: string) => {
+  try {
+    // 首先尝试通过 Supabase 客户端更新
+    const supabasePromise = supabase.rpc('increment_info_counter', {
+      row_id: id,
+      counter_name: counterName
+    })
+
+    await fetchWithTimeout(supabasePromise, 3000)
+  } catch (e) {
+    // 超时或其他错误，尝试通过后端 API 更新
+    const response = await fetch('/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, counterName })
+    })
+
+    if (!response.ok) throw new Error('Failed to update counter')
+  }
+}
+
 export function MusicBubble({ 
   id, song, artist, comment, status, info, user_id, created_at 
 }: MusicBubbleProps) {
@@ -42,14 +70,7 @@ export function MusicBubble({
     setPlays(newPlays)
     
     try {
-      const { error } = await supabase.rpc('increment_info_counter', {
-        row_id: id,
-        counter_name: 'play_count'
-      })
-      
-      if (error) throw error
-      
-      // 更新缓存
+      await updateCounter(id, 'play_count')
       invalidateComments()
     } catch (error) {
       console.error('Failed to update play count:', error)
@@ -68,14 +89,7 @@ export function MusicBubble({
     setLikes(newLikes)
     
     try {
-      const { error } = await supabase.rpc('increment_info_counter', {
-        row_id: id,
-        counter_name: 'likes'
-      })
-      
-      if (error) throw error
-      
-      // 更新缓存
+      await updateCounter(id, 'likes')
       invalidateComments()
     } catch (error) {
       console.error('Failed to update likes:', error)

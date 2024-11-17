@@ -27,6 +27,13 @@ interface MusicComment {
   created_at: string
 }
 
+const fetchWithTimeout = async (promise: Promise<any>, timeout: number) => {
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout')), timeout)
+  })
+  return Promise.race([promise, timeoutPromise])
+}
+
 export function MusicOcean() {
   const { ref, entry } = useIntersection({
     threshold: 0.5,
@@ -44,16 +51,30 @@ export function MusicOcean() {
   } = useInfiniteQuery({
     queryKey: ['music-comments'],
     queryFn: async ({ pageParam = 0 }) => {
-      const { data, error } = await supabase.rpc('get_public_comments_with_count', {
-        page_size: ITEMS_PER_PAGE,
-        page_number: pageParam
-      })
+      try {
+        // 首先尝试通过 Supabase 客户端获取
+        const supabasePromise = supabase.rpc('get_public_comments_with_count', {
+          page_size: ITEMS_PER_PAGE,
+          page_number: pageParam
+        })
 
-      if (error) throw error
-      
-      return {
-        comments: data.comments as MusicComment[],
-        nextPage: (pageParam + 1) * ITEMS_PER_PAGE < data.total_count ? pageParam + 1 : undefined
+        const { data, error } = await fetchWithTimeout(supabasePromise, 3000)
+        if (!error) {
+          return {
+            comments: data.comments as MusicComment[],
+            nextPage: (pageParam + 1) * ITEMS_PER_PAGE < data.total_count ? pageParam + 1 : undefined
+          }
+        }
+      } catch (e) {
+        // 超时或其他错误，尝试通过后端 API 获取
+        const response = await fetch(`/api/comments?pageSize=${ITEMS_PER_PAGE}&pageNumber=${pageParam}`)
+        if (!response.ok) throw new Error('Failed to fetch comments')
+        const data = await response.json()
+        
+        return {
+          comments: data.comments as MusicComment[],
+          nextPage: (pageParam + 1) * ITEMS_PER_PAGE < data.total_count ? pageParam + 1 : undefined
+        }
       }
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
