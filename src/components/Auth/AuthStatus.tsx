@@ -8,7 +8,8 @@ import {
   IconUser,
   IconCircleCheck,
   IconCircleX,
-  IconDatabase
+  IconDatabase,
+  IconLoader2
 } from '@tabler/icons-react'
 import { useState, useEffect } from 'react'
 import { UserProfile } from './UserProfile'
@@ -24,6 +25,7 @@ type StatusItem = {
   description: string
   agreed: boolean
   menu?: boolean
+  loading?: boolean
 }
 
 export function AuthStatus() {
@@ -33,6 +35,7 @@ export function AuthStatus() {
   const [dbStatus, setDbStatus] = useState<{
     browser: boolean
     server: boolean
+    loading?: boolean
   }>({ browser: false, server: false })
 
   useEffect(() => {
@@ -65,13 +68,22 @@ export function AuthStatus() {
   }
 
   const checkDbConnection = async () => {
+    setDbStatus(prev => ({ ...prev, loading: true }))
+
+    const timeout = (ms: number) => new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('请求超时')), ms)
+    )
+
     // 重置状态
-    setDbStatus({ browser: false, server: false })
+    setDbStatus(prev => ({ ...prev, browser: false, server: false }))
 
     // 浏览器直接访问 Supabase
     try {
       const clientStart = Date.now()
-      const { data, error } = await supabase.rpc('check_db_health')
+      const { data, error } = await Promise.race([
+        supabase.rpc('check_db_health'),
+        timeout(3000)
+      ])
       const clientLatency = Date.now() - clientStart
       if (error) throw error
 
@@ -98,7 +110,10 @@ export function AuthStatus() {
 
     // 通过服务器访问 Supabase
     try {
-      const result = await fetch('/api/check-db-health').then(res => res.json())
+      const result = await Promise.race([
+        fetch('/api/check-db-health').then(res => res.json()),
+        timeout(3000)
+      ])
       if (result.error) throw new Error(result.error)
 
       const serverTimeDiff = Math.abs(Date.now() - result.timestamp)
@@ -123,6 +138,8 @@ export function AuthStatus() {
       })
       setDbStatus(prev => ({ ...prev, server: false }))
     }
+
+    setDbStatus(prev => ({ ...prev, loading: false }))
   }
 
 
@@ -160,7 +177,8 @@ export function AuthStatus() {
       icon: IconDatabase,
       label: '',
       description: getDbStatusDescription(dbStatus),
-      agreed: dbStatus.browser && dbStatus.server
+      agreed: dbStatus.browser && dbStatus.server,
+      loading: dbStatus.loading
     }
   ]
 
@@ -219,15 +237,25 @@ function StatusIcon({ status, onClick }: {
       <Stack 
         align="center" 
         gap={4}
-        style={{ cursor: 'pointer', opacity: 0.8 }}
+        style={{ cursor: 'pointer' }}
         onClick={onClick}
       >
         <Group gap={4}>
-          <status.icon size={16} color={getStatusColor()} />
-          {status.agreed ? (
-            <IconCircleCheck size={14} color="var(--mantine-color-green-6)" />
+          {status.loading ? (
+            <IconLoader2 
+              size={16} 
+              className="animate-spin" 
+              color="var(--mantine-color-blue-6)"
+            />
           ) : (
-            <IconCircleX size={14} color="var(--mantine-color-gray-6)" />
+            <>
+              <status.icon size={16} color={getStatusColor()} />
+              {status.agreed ? (
+                <IconCircleCheck size={14} color="var(--mantine-color-green-6)" />
+              ) : (
+                <IconCircleX size={14} color="var(--mantine-color-gray-6)" />
+              )}
+            </>
           )}
         </Group>
         <Text size="10px" c="dimmed">
