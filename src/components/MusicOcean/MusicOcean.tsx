@@ -30,6 +30,7 @@ interface MusicComment {
 export function MusicOcean() {
   const { ref, entry } = useIntersection({
     threshold: 0.5,
+    root: null
   })
 
   const { 
@@ -105,13 +106,15 @@ export function MusicOcean() {
         ))}
       </div>
       
-      <div ref={ref} style={{ height: '20px', margin: '20px 0' }}>
-        {isFetchingNextPage && (
-          <Center>
-            <Loader size="sm" />
-          </Center>
-        )}
-      </div>
+      {hasNextPage && (
+        <div ref={ref} style={{ height: '20px', margin: '20px 0' }}>
+          {isFetchingNextPage && (
+            <Center>
+              <Loader size="sm" />
+            </Center>
+          )}
+        </div>
+      )}
     </Box>
   )
 } 

@@ -28,7 +28,7 @@ interface MusicBubbleProps {
 export function MusicBubble({ 
   id, song, artist, comment, status, info, user_id, created_at 
 }: MusicBubbleProps) {
-  const [isFocused, setIsFocused] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [likes, setLikes] = useState(info.likes)
   const [plays, setPlays] = useState(info.play_count)
   const { handleBubbleSearch } = useApp()
@@ -90,49 +90,44 @@ export function MusicBubble({
   
   return (
     <Paper 
-      className={`${styles.bubble} ${isFocused ? styles.focused : ''}`}
-      radius="md" 
-      p="md" 
+      className={`${styles.bubble} ${isExpanded ? styles.expanded : ''}`}
+      radius="sm" 
       withBorder
-      onClick={() => setIsFocused(!isFocused)}
+      onClick={() => setIsExpanded(!isExpanded)}
     >
-      <Stack gap="xs">
-        {/* 标题和艺术家 */}
-        <div>
-          <Group justify="space-between" wrap="nowrap">
-            <Text fw={500} lineClamp={1}>{song}</Text>
-            {status === 'example' && (
-              <Badge size="sm" variant="light">示例</Badge>
-            )}
-          </Group>
-          <Text size="sm" c="dimmed" lineClamp={1}>{artist}</Text>
-        </div>
+      <Stack gap={4} style={{ flex: 1 }}>
+        {/* 主要评论内容 */}
+        <Text className={styles.quote}>"{comment}"</Text>
 
-        {/* 评论内容 */}
-        <Text size="sm" lineClamp={3}>{comment}</Text>
-        
+        {/* 歌曲信息 */}
+        <Text className={styles.songInfo}>
+          《{song}》- {artist}
+        </Text>
+
         {/* 底部信息栏 */}
-        <Group justify="space-between" wrap="nowrap">
-          {/* 左侧统计 */}
+        <Group justify="space-between" wrap="nowrap" className={styles.footer}>
           <Group gap="xs" wrap="nowrap">
-            <ActionIcon 
-              variant="subtle" 
-              color="gray" 
-              onClick={handleLike}
-              className={styles.actionButton}
-            >
-              <Group gap={4} wrap="nowrap">
-                <IconHeart size={16} />
-                <Text size="xs">{likes}</Text>
-              </Group>
-            </ActionIcon>
-            <Group gap={4} wrap="nowrap" c="dimmed">
-              <IconPlayerPlay size={16} />
-              <Text size="xs">{plays}</Text>
+            <Group gap={4} wrap="nowrap" className={styles.actionGroup}>
+              <ActionIcon 
+                variant="subtle" 
+                onClick={handleLike}
+                className={styles.actionButton}
+              >
+                <IconHeart size={14} stroke={1.5} />
+              </ActionIcon>
+              <Text className={styles.actionText}>{likes}</Text>
+            </Group>
+            <Group gap={4} wrap="nowrap" className={styles.actionGroup}>
+              <ActionIcon
+                variant="subtle"
+                className={styles.actionButton}
+              >
+                <IconPlayerPlay size={14} stroke={1.5} />
+              </ActionIcon>
+              <Text className={styles.actionText}>{plays}</Text>
             </Group>
           </Group>
 
-          {/* 右侧操作和时间 */}
           <Group gap="xs" wrap="nowrap">
             <Text size="xs" c="dimmed">
               {formatDistanceToNow(new Date(created_at), { 
@@ -142,10 +137,11 @@ export function MusicBubble({
             </Text>
             <ActionIcon 
               variant="subtle"
+              size="sm"
               onClick={handleSearchClick}
               className={styles.actionButton}
             >
-              <IconSearch size={16} />
+              <IconSearch size={14} stroke={1.5} />
             </ActionIcon>
           </Group>
         </Group>

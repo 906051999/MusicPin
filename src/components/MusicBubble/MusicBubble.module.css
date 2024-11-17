@@ -1,34 +1,140 @@
 .bubble {
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
-    height: 100%;
+    border-left: 3px solid var(--mantine-color-blue-6);
+    margin-bottom: 0.5rem;
+    transform: translateY(0);
+    min-height: 80px;
+    height: fit-content;
+    overflow: hidden;
+    padding: 12px !important;
     display: flex;
     flex-direction: column;
-  }
+}
   
-  .focused {
+.expanded {
+    background-color: var(--mantine-color-gray-0);
+    min-height: 120px;
+    height: fit-content;
+    transform: scale(1.01);
+    padding: 16px !important;
+}
+  
+.quote {
+    font-size: 1rem;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+.expanded .quote {
+    font-size: 1.1rem;
+    -webkit-line-clamp: unset;
+    margin-bottom: 0.5rem;
+}
+
+.songInfo {
+    font-size: 0.8rem;
+    color: var(--mantine-color-dimmed);
+    margin: 0;
+}
+
+.details {
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+  
+.visible {
+    height: auto;
+    opacity: 1;
+    margin-top: 0.5rem;
+}
+  
+.footer {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--mantine-color-gray-2);
+    opacity: 0.9;
+}
+  
+.focused {
     transform: scale(1.02);
     box-shadow: var(--mantine-shadow-md);
-  }
+}
   
-  .actionButton {
-    opacity: 0.7;
-    transition: opacity 0.2s;
-  }
+.actionButton {
+    opacity: 0.8;
+    transition: all 0.2s ease;
+    height: 24px !important;
+    width: 24px !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
   
-  .actionButton:hover {
+.actionButton:hover {
     opacity: 1;
-  }
+    background-color: var(--mantine-color-gray-1);
+}
   
-  /* 移动端样式优化 */
-  @media (max-width: 768px) {
+.actionGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+  
+.actionText {
+    font-size: 0.75rem;
+    line-height: 1;
+    margin: 0;
+    color: var(--mantine-color-dimmed);
+}
+  
+/* 移动端样式优化 */
+@media (max-width: 768px) {
     .bubble {
-      font-size: 14px;
+      min-height: 70px;
+      height: fit-content;
+      padding: 10px !important;
     }
     
-    /* 确保按钮足够大，易于点击 */
-    .actionButton {
-      min-width: 32px;
-      min-height: 32px;
+    .expanded {
+      min-height: 100px;
+      padding: 12px !important;
     }
-  }
+
+    .quote {
+      font-size: 0.9rem;
+      -webkit-line-clamp: 2;
+    }
+
+    .expanded .quote {
+      font-size: 1rem;
+    }
+
+    .songInfo {
+      font-size: 0.75rem;
+    }
+
+    .footer {
+      margin-top: 0.25rem;
+      padding-top: 0.25rem;
+    }
+    
+    .actionButton {
+      height: 22px !important;
+      width: 22px !important;
+    }
+
+    .actionText {
+      font-size: 0.7rem;
+    }
+}
